@@ -29,3 +29,16 @@ jobs:
         run: cmake --build build --config Release --parallel 4
       - name: Contract tests
         run: ctest --test-dir build -C Release --output-on-failure --verbose
+      - name: Steinberg Validator on 125A Drum Finisher
+        shell: pwsh
+        run: |
+          $validator = Get-ChildItem -Path build -Recurse -File -Filter "validator.exe" | Where-Object { $_.FullName -match "[\\/]Release[\\/]" } | Select-Object -First 1
+          if (-not $validator) { $validator = Get-ChildItem -Path build -Recurse -File -Filter "validator.exe" | Select-Object -First 1 }
+          $plugin = Get-ChildItem -Path build -Recurse -Directory -Filter "125A_Drum_Finisher.vst3" | Select-Object -First 1
+          if (-not $plugin) { $plugin = Get-ChildItem -Path build -Recurse -File -Filter "125A_Drum_Finisher.vst3" | Select-Object -First 1 }
+          if (-not $validator) { throw "Steinberg Validator executable missing" }
+          if (-not $plugin) { throw "Drum Finisher VST3 bundle missing" }
+          Write-Host "Validator: $($validator.FullName)"
+          Write-Host "Plugin: $($plugin.FullName)"
+          & $validator.FullName $plugin.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg Validator failed: $LASTEXITCODE" }
