@@ -1,4 +1,5 @@
 #include "DrumCore.h"
+#include "BypassRamp.h"
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "public.sdk/source/main/pluginfactory.h"
@@ -85,7 +86,7 @@ public:
         return AudioEffect::setupProcessing(setup);
     }
     tresult PLUGIN_API setActive(TBool state) override {
-        if(state){core_.reset(); bypassMix_=bypass_?1.0:0.0;}
+        if(state){core_.reset(); bypassRamp_.reset(bypass_);}
         return AudioEffect::setActive(state);
     }
     tresult PLUGIN_API canProcessSampleSize(int32 symbolic) override {
@@ -183,18 +184,15 @@ private:
             Sample wetL=0,wetR=0;
             // Continue the wet engine while bypassed, avoiding cold state on return.
             core_.process(&dryL,&dryR,&wetL,&wetR,1);
-            const double target=bypass_?1.0:0.0;
-            const double increment=1.0/64.0;
-            if(bypassMix_<target)bypassMix_=std::min(target,bypassMix_+increment);
-            else if(bypassMix_>target)bypassMix_=std::max(target,bypassMix_-increment);
-            out[0][i]=static_cast<Sample>((1.0-bypassMix_)*wetL+bypassMix_*dryL);
-            out[1][i]=static_cast<Sample>((1.0-bypassMix_)*wetR+bypassMix_*dryR);
+            const double blend=bypassRamp_.advance(bypass_);
+            out[0][i]=static_cast<Sample>((1.0-blend)*wetL+blend*dryL);
+            out[1][i]=static_cast<Sample>((1.0-blend)*wetR+blend*dryR);
         }
     }
     Core core_{};
     Controls controls_{};
     bool bypass_=false;
-    double bypassMix_=0.0;
+    a125::drum::BypassRamp bypassRamp_{};
 };
 class Controller final : public EditController {
 public:

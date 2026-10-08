@@ -43,7 +43,8 @@ public:
         controls_.tight = unit(c.tight);
         controls_.finish = unit(c.finish);
         controls_.glue = unit(c.glue);
-        controls_.outputDb = std::clamp(c.outputDb, -12.0f, 12.0f);
+        controls_.outputDb = std::isfinite(c.outputDb) ? std::clamp(c.outputDb, -12.0f, 12.0f) : 0.0f;
+        makeup_ = std::pow(10.0f, controls_.outputDb / 20.0f);
     }
     const Controls& controls() const noexcept { return controls_; }
 
@@ -57,7 +58,7 @@ public:
         const float t = controls_.tight;
         const float f = controls_.finish;
         const float g = controls_.glue;
-        const float makeup = std::pow(10.0f, controls_.outputDb / 20.0f);
+        const float makeup = makeup_;
         // When all macros are 0 and output is 0 dB, return a bit-exact passthrough.
         if (p == 0 && b == 0 && t == 0 && f == 0 && g == 0 && controls_.outputDb == 0) {
             for (std::size_t i=0; i<frames; ++i) {
@@ -143,6 +144,7 @@ private:
     double glueEnv_=0.0, tightEnvelope_=0.0, autoGain_=1.0;
     Channel channels_[2]{};
     Controls controls_{};
+    float makeup_=1.0f;
 };
 } // namespace drum
 } // namespace a125
