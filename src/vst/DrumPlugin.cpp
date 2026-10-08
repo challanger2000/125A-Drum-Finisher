@@ -1,4 +1,9 @@
 #include "DrumCore.h"
+#include "gui/SteelKnob.h"
+#include "vstgui/plugin-bindings/vst3editor.h"
+#include "vstgui/uidescription/uiattributes.h"
+#include <cstring>
+#include <vector>
 #include "BypassRamp.h"
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
@@ -194,7 +199,7 @@ private:
     bool bypass_=false;
     a125::drum::BypassRamp bypassRamp_{};
 };
-class Controller final : public EditController {
+class Controller final : public EditController, public VSTGUI::VST3EditorDelegate {
 public:
     static FUnknown* createInstance(void*) {return static_cast<IEditController*>(new Controller);}
     tresult PLUGIN_API initialize(FUnknown* context) override {
@@ -209,6 +214,30 @@ public:
         parameters.addParameter(STR16("Character"),nullptr,2,0.5,ParameterInfo::kCanAutomate,kCharacter);
         parameters.addParameter(STR16("Bypass"),nullptr,1,0,ParameterInfo::kCanAutomate|ParameterInfo::kIsBypass,kBypass);
         return kResultOk;
+    }
+    IPlugView* PLUGIN_API createView(FIDString name) override {
+        if(!name || std::strcmp(name,ViewType::kEditor)!=0)return nullptr;
+        auto* editor=new VSTGUI::VST3Editor(this,"view","DrumFinisher.uidesc");
+        editor->setAllowedZoomFactors(std::vector<double>{1.0,1.5});
+        return editor;
+    }
+    VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
+        const VSTGUI::UIAttributes& attributes,
+        const VSTGUI::IUIDescription*,VSTGUI::VST3Editor* editor) override {
+        if(!name||!editor)return nullptr;
+        const char* labels[]={"DrumKnobPunch","DrumKnobBody","DrumKnobTight",
+                              "DrumKnobFinish","DrumKnobGlue","DrumKnobOutput"};
+        int tag=-1;
+        for(int n=0;n<6;++n)if(std::strcmp(name,labels[n])==0){tag=100+n;break;}
+        if(tag<0)return nullptr;
+        VSTGUI::CPoint origin{0.0,0.0},size{125.0,125.0};
+        attributes.getPointAttribute("origin",origin);
+        attributes.getPointAttribute("size",size);
+        auto* knob=new DrumFinisher::SteelKnob(
+            VSTGUI::CRect(origin.x,origin.y,origin.x+size.x,origin.y+size.y),
+            editor,tag,DrumFinisher::SteelKnob::Style::Hero);
+        knob->setDefaultValue(tag==105?0.5f:0.0f);
+        return knob;
     }
     tresult PLUGIN_API setComponentState(IBStream* stream) override {
         Controls c;bool bypass=false;
