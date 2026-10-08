@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include "dsp/AdaptiveResonanceSuppressor.h"
 
 namespace a125 {
 namespace drum {
@@ -28,6 +29,7 @@ public:
         bodyA_ = pole(1.0 / (2.0 * 3.141592653589793 * 115.0));
         releaseA_ = pole(0.180);
         finishA_ = pole(1.0 / (2.0 * 3.141592653589793 * 3500.0));
+        resonance_.prepare(fs_);
         reset();
     }
     void reset() noexcept {
@@ -35,6 +37,7 @@ public:
         glueEnv_ = 0.0;
         tightEnvelope_ = 0.0;
         autoGain_ = 1.0;
+        resonance_.reset();
     }
     void setControls(const Controls& c) noexcept {
         controls_ = c;
@@ -105,17 +108,20 @@ public:
                 // harshness while leaving newly arriving attacks largely intact.
                 // No nonlinear waveshaper: the incoming Tape/Tube character
                 // should remain the sound source, not be re-generated here.
-                s.highLow = finishA_*s.highLow+(1.0-finishA_)*y;
-                if (f>0.0f) {
-                    const float transientProtect=std::max(0.0f,static_cast<float>(s.attack-s.sustain));
-                    const float protect=transientProtect/(0.10f+transientProtect);
-                    const float strength=f*0.14f*(1.0f-protect);
-                    y -= strength*(y-static_cast<float>(s.highLow));
-                }
+                if(ch==0) finishPairLeft_=y;
+                else finishPairRight_=y;
                 y*=attenuation*makeup;
                 if (ch==0) outLeft[i]=finiteSample(static_cast<Sample>(y));
                 else outRight[i]=finiteSample(static_cast<Sample>(y));
             }
+            // Stereo-linked adaptive resonance control, after other shaping.
+            // Stateful detector is maintained even at 0% to permit smooth automation.
+            double fl=finishPairLeft_,fr=finishPairRight_;
+            resonance_.processFrame(fl,fr,f);
+            // Correction is applied to the already rendered channel outputs.
+            // Only the delta is added; unity at FINISH=0 remains bit-exact.
+            outLeft[i]=finiteSample(static_cast<Sample>(outLeft[i]+(fl-finishPairLeft_)*attenuation*makeup));
+            outRight[i]=finiteSample(static_cast<Sample>(outRight[i]+(fr-finishPairRight_)*attenuation*makeup));
         }
     }
     void process(const float* l,const float* r,float* ol,float* or_,std::size_t n) noexcept {
@@ -145,6 +151,8 @@ private:
     Channel channels_[2]{};
     Controls controls_{};
     float makeup_=1.0f;
+    double finishPairLeft_=0.0,finishPairRight_=0.0;
+    dsp::AdaptiveResonanceSuppressor resonance_{};
 };
 } // namespace drum
 } // namespace a125
