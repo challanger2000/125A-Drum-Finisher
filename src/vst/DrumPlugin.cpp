@@ -218,6 +218,8 @@ public:
         character->appendString(STR16("TIGHT"));
         character->appendString(STR16("PUNCH"));
         character->appendString(STR16("DENSE"));
+        character->getInfo().defaultNormalizedValue=0.5;
+        character->setNormalized(0.5);
         parameters.addParameter(character);
         parameters.addParameter(STR16("Bypass"),nullptr,1,0,ParameterInfo::kCanAutomate|ParameterInfo::kIsBypass,kBypass);
         return kResultOk;

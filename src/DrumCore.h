@@ -28,7 +28,6 @@ public:
         slowA_ = pole(0.055);
         bodyA_ = pole(1.0 / (2.0 * 3.141592653589793 * 115.0));
         releaseA_ = pole(0.180);
-        finishA_ = pole(1.0 / (2.0 * 3.141592653589793 * 3500.0));
         resonance_.prepare(fs_);
         reset();
     }
@@ -103,11 +102,7 @@ public:
                 // Tail moderation is signal-following and not a hard gate.
                 const float tail = std::clamp(static_cast<float>(s.sustain/(s.attack+0.01)),0.0f,1.0f);
                 y *= 1.0f-(t*characterTight*0.30f)*tail;
-                // FINISH is corrective, not a second saturation stage.
-                // A restrained upper-band dynamic shelf attenuates sustained
-                // harshness while leaving newly arriving attacks largely intact.
-                // No nonlinear waveshaper: the incoming Tape/Tube character
-                // should remain the sound source, not be re-generated here.
+                // The FINISH detector processes both pre-output channels together.
                 if(ch==0) finishPairLeft_=y;
                 else finishPairRight_=y;
                 y*=attenuation*makeup;
@@ -136,7 +131,6 @@ private:
         double attack=0.0;
         double sustain=0.0;
         double low=0.0;
-        double highLow=0.0;
     };
     static float unit(float x) noexcept { return std::isfinite(x) ? std::clamp(x,0.0f,1.0f) : 0.0f; }
     template<class Sample>
@@ -146,7 +140,7 @@ private:
     }
     double fs_=48000.0;
     double fastA_=0.99, slowA_=0.999, bodyA_=0.98;
-    double releaseA_=0.99, finishA_=0.98;
+    double releaseA_=0.99;
     double glueEnv_=0.0, tightEnvelope_=0.0, autoGain_=1.0;
     Channel channels_[2]{};
     Controls controls_{};
