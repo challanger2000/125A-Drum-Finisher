@@ -26,8 +26,14 @@ public:
         // Temporal constants are provisional until validated on drum fixtures.
         fastA_ = pole(0.002);
         slowA_ = pole(0.055);
-        bodyA_ = pole(1.0 / (2.0 * 3.141592653589793 * 115.0));
-        releaseA_ = pole(0.180);
+        constexpr double twoPi=6.283185307179586;
+        bodyHighA_ = pole(1.0/(twoPi*350.0));
+        bodyLowA_ = pole(1.0/(twoPi*110.0));
+        glueDetectorAttackA_ = pole(0.002);
+        glueDetectorReleaseA_ = pole(0.150);
+        glueRmsA_ = pole(0.350);
+        glueGainAttackA_ = pole(0.005);
+        glueGainReleaseA_ = pole(0.180);
         resonance_.prepare(fs_);
         reset();
     }
@@ -36,9 +42,14 @@ public:
         glueEnv_ = 0.0;
         tightEnvelope_ = 0.0;
         autoGain_ = 1.0;
+        glueTargetGain_=1.0;
+        glueRmsEnergy_=0.0;
+        glueTick_=0;
+        glueDirty_=true;
         resonance_.reset();
     }
     void setControls(const Controls& c) noexcept {
+        glueDirty_ = glueDirty_ || controls_.glue != unit(c.glue);
         controls_ = c;
         controls_.punch = unit(c.punch);
         controls_.body = unit(c.body);
@@ -77,31 +88,57 @@ public:
         for (std::size_t i=0; i<frames; ++i) {
             const Sample x[2] = {finiteSample(left[i]), finiteSample(right[i])};
             const float peak = static_cast<float>(std::max(std::abs(x[0]),std::abs(x[1])));
-            const double smooth = peak > glueEnv_ ? fastA_ : slowA_;
-            glueEnv_ = smooth*glueEnv_+(1.0-smooth)*peak;
-            tightEnvelope_ = slowA_*tightEnvelope_+(1.0-slowA_)*peak;
-            // Slow, stereo-linked gain control: initial attacks are protected by
-            // the fast/slow envelope difference; compression develops on sustain.
-            const float onset = std::max(0.0f, static_cast<float>(peak-tightEnvelope_));
-            const float protect = onset/(0.08f+onset);
-            const float drive = static_cast<float>(tightEnvelope_)/(0.16f+static_cast<float>(tightEnvelope_));
-            const float targetGain = 1.0f-g*0.65f*drive*(1.0f-protect);
-            autoGain_ = releaseA_*autoGain_+(1.0-releaseA_)*targetGain;
-            const float attenuation = static_cast<float>(autoGain_);
+            // Signal-relative stereo-linked bus compression. Threshold follows
+            // programme RMS slowly; transfer uses an actual soft-knee ratio.
+            const double detectorA=peak>glueEnv_?
+                glueDetectorAttackA_:glueDetectorReleaseA_;
+            glueEnv_=detectorA*glueEnv_+(1.0-detectorA)*peak;
+            glueRmsEnergy_=glueRmsA_*glueRmsEnergy_+
+                (1.0-glueRmsA_)*static_cast<double>(peak)*peak;
+            tightEnvelope_=slowA_*tightEnvelope_+(1.0-slowA_)*peak;
+            if(++glueTick_>=16||glueDirty_){
+                glueTick_=0;
+                glueDirty_=false;
+                glueTargetGain_=1.0;
+                if(g>0.0f){
+                    const double threshold=std::clamp(
+                        2.5*std::sqrt(std::max(0.0,glueRmsEnergy_)),
+                        0.065,0.35);
+                    const double overDb=20.0*std::log10(
+                        std::max(1.0e-12,glueEnv_)/threshold);
+                    constexpr double halfKnee=3.0;
+                    const double above=overDb<=-halfKnee?0.0:
+                        (overDb>=halfKnee?overDb:
+                        (overDb+halfKnee)*(overDb+halfKnee)/(4.0*halfKnee));
+                    const double ratio=1.0+2.5*g;
+                    const double reductionDb=std::min(
+                        18.0,above*(1.0-1.0/ratio));
+                    glueTargetGain_=std::pow(10.0,-reductionDb/20.0);
+                }
+            }
+            const double gainA=glueTargetGain_<autoGain_?
+                glueGainAttackA_:glueGainReleaseA_;
+            autoGain_=gainA*autoGain_+(1.0-gainA)*glueTargetGain_;
+            const float attenuation=static_cast<float>(autoGain_);
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
                 const float absx = static_cast<float>(std::abs(x[ch]));
                 s.attack = fastA_*s.attack+(1.0-fastA_)*absx;
                 s.sustain = slowA_*s.sustain+(1.0-slowA_)*absx;
-                s.low = bodyA_*s.low+(1.0-bodyA_)*x[ch];
+                s.bodyHigh=bodyHighA_*s.bodyHigh+(1.0-bodyHighA_)*x[ch];
+                s.bodyLow=bodyLowA_*s.bodyLow+(1.0-bodyLowA_)*x[ch];
                 const float transient = std::max(0.0f, static_cast<float>(s.attack-s.sustain));
-                // Bounded attack-driven enhancement, suppressed on high-passed cymbal component.
-                const float lowMid = static_cast<float>(s.low);
-                const float punchDrive = p*characterPunch*transient/(0.15f+transient);
-                double y = x[ch] + (punchDrive*0.6f)*lowMid;
-                // Bounded, low-band-only body gain. Upper snare/cymbal bands
-                // retain their direct path, avoiding a global darkening tilt.
-                y += (b*characterBody*0.16f)*lowMid;
+                // PUNCH raises the transient independently of low-frequency
+                // energy: snare and kick attacks respond without a bass shelf.
+                const float punchDrive=p*characterPunch*
+                    transient/(0.12f+transient);
+                double y=x[ch]*(1.0+0.80*punchDrive);
+                // BODY is a separate 110-350 Hz low-mid sustain region;
+                // difference of two stable one-pole lowpasses, not sub boost.
+                const double bodyBand=s.bodyHigh-s.bodyLow;
+                const double sustainWeight=std::clamp(
+                    s.sustain/(s.attack+0.02),0.0,1.0);
+                y+=b*characterBody*0.60*sustainWeight*bodyBand;
                 // Tail moderation is signal-following and not a hard gate.
                 const float tail = std::clamp(static_cast<float>(s.sustain/(s.attack+0.01)),0.0f,1.0f);
                 y *= 1.0f-(t*characterTight*0.30f)*tail;
@@ -133,7 +170,8 @@ private:
     struct Channel {
         double attack=0.0;
         double sustain=0.0;
-        double low=0.0;
+        double bodyHigh=0.0;
+        double bodyLow=0.0;
     };
     static float unit(float x) noexcept { return std::isfinite(x) ? std::clamp(x,0.0f,1.0f) : 0.0f; }
     template<class Sample>
@@ -142,9 +180,14 @@ private:
         return std::exp(-1.0/(std::max(1.0e-6,seconds)*fs_));
     }
     double fs_=48000.0;
-    double fastA_=0.99, slowA_=0.999, bodyA_=0.98;
-    double releaseA_=0.99;
-    double glueEnv_=0.0, tightEnvelope_=0.0, autoGain_=1.0;
+    double fastA_=0.99, slowA_=0.999;
+    double bodyHighA_=0.98, bodyLowA_=0.99;
+    double glueDetectorAttackA_=0.99,glueDetectorReleaseA_=0.99;
+    double glueRmsA_=0.999,glueGainAttackA_=0.99,glueGainReleaseA_=0.999;
+    double glueEnv_=0.0,tightEnvelope_=0.0,autoGain_=1.0;
+    double glueTargetGain_=1.0,glueRmsEnergy_=0.0;
+    int glueTick_=0;
+    bool glueDirty_=true;
     Channel channels_[2]{};
     Controls controls_{};
     float makeup_=1.0f;
