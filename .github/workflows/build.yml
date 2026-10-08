@@ -1,0 +1,31 @@
+name: Drum Finisher V1 Build and Core QA
+
+on:
+  push:
+    branches: [v1.0.0-engineering]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned Steinberg SDK with submodules
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none --depth=1 --branch v3.8.1_build_84 --recurse-submodules --shallow-submodules https://github.com/steinbergmedia/vst3sdk.git "$env:RUNNER_TEMP/vst3sdk"
+          $actual = (git -C "$env:RUNNER_TEMP/vst3sdk" rev-parse HEAD).Trim()
+          if ($actual -ne "3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96") { throw "Unexpected SDK revision: $actual" }
+      - name: Configure all targets
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDRUM_BUILD_VST3=ON -DVST3_SDK_ROOT="${env:RUNNER_TEMP}/vst3sdk"
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Contract tests
+        run: ctest --test-dir build -C Release --output-on-failure
