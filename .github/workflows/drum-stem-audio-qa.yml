@@ -1,0 +1,24 @@
+name: Drum Stem Offline Audio QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [v1.0.0-engineering]
+    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp']
+jobs:
+  audio-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile actual DrumCore offline renderer
+        run: g++ -std=c++17 -O2 -I src tests/offline_render.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_offline_render
+      - name: Download, render and measure licensed drum-only fixtures
+        run: python3 tests/offline_drum_qa.py ./drum_offline_render
+      - name: Upload metrics and small audio comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-Drum-Finisher-Audio-QA
+          path: audio-qa-output/
+          if-no-files-found: warn
+          retention-days: 14
