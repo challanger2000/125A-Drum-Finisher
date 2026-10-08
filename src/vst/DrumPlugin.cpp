@@ -147,14 +147,14 @@ public:
     tresult PLUGIN_API initialize(FUnknown* context) override {
         auto result=EditController::initialize(context);
         if(result!=kResultOk)return result;
-        parameters.addParameter(STR16("Punch"),STR16("%"),0,0,kCanAutomate,kPunch);
-        parameters.addParameter(STR16("Body"),STR16("%"),0,0,kCanAutomate,kBody);
-        parameters.addParameter(STR16("Tight"),STR16("%"),0,0,kCanAutomate,kTight);
-        parameters.addParameter(STR16("Finish"),STR16("%"),0,0,kCanAutomate,kFinish);
-        parameters.addParameter(STR16("Glue"),STR16("%"),0,0,kCanAutomate,kGlue);
-        parameters.addParameter(STR16("Output"),STR16("dB"),0,0.5,kCanAutomate,kOutput);
-        parameters.addParameter(STR16("Character"),nullptr,2,0.5,kCanAutomate,kCharacter);
-        parameters.addParameter(STR16("Bypass"),nullptr,1,0,kCanAutomate|ParameterInfo::kIsBypass,kBypass);
+        parameters.addParameter(STR16("Punch"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kPunch);
+        parameters.addParameter(STR16("Body"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kBody);
+        parameters.addParameter(STR16("Tight"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kTight);
+        parameters.addParameter(STR16("Finish"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kFinish);
+        parameters.addParameter(STR16("Glue"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kGlue);
+        parameters.addParameter(STR16("Output"),STR16("dB"),0,0.5,ParameterInfo::kCanAutomate,kOutput);
+        parameters.addParameter(STR16("Character"),nullptr,2,0.5,ParameterInfo::kCanAutomate,kCharacter);
+        parameters.addParameter(STR16("Bypass"),nullptr,1,0,ParameterInfo::kCanAutomate|ParameterInfo::kIsBypass,kBypass);
         return kResultOk;
     }
     tresult PLUGIN_API setComponentState(IBStream* stream) override {
