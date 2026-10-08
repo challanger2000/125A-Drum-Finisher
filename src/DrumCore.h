@@ -25,13 +25,15 @@ public:
         // Temporal constants are provisional until validated on drum fixtures.
         fastA_ = pole(0.002);
         slowA_ = pole(0.055);
-        bodyA_ = pole(1.0 / (2.0 * 3.141592653589793 * 150.0));
+        bodyA_ = pole(1.0 / (2.0 * 3.141592653589793 * 115.0));
+        releaseA_ = pole(0.180);
         reset();
     }
     void reset() noexcept {
         for (auto& c : channels_) c = Channel{};
         glueEnv_ = 0.0;
         tightEnvelope_ = 0.0;
+        autoGain_ = 1.0;
     }
     void setControls(const Controls& c) noexcept {
         controls_ = c;
@@ -70,7 +72,14 @@ public:
             const double smooth = peak > glueEnv_ ? fastA_ : slowA_;
             glueEnv_ = smooth*glueEnv_+(1.0-smooth)*peak;
             tightEnvelope_ = slowA_*tightEnvelope_+(1.0-slowA_)*peak;
-            const float attenuation = 1.0f / (1.0f + g * 1.4f * static_cast<float>(glueEnv_));
+            // Slow, stereo-linked gain control: initial attacks are protected by
+            // the fast/slow envelope difference; compression develops on sustain.
+            const float onset = std::max(0.0f, static_cast<float>(peak-tightEnvelope_));
+            const float protect = onset/(0.08f+onset);
+            const float drive = static_cast<float>(tightEnvelope_)/(0.16f+static_cast<float>(tightEnvelope_));
+            const float targetGain = 1.0f-g*0.65f*drive*(1.0f-protect);
+            autoGain_ = releaseA_*autoGain_+(1.0-releaseA_)*targetGain;
+            const float attenuation = static_cast<float>(autoGain_);
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
                 const float absx = std::abs(x[ch]);
@@ -82,14 +91,20 @@ public:
                 const float lowMid = static_cast<float>(s.low);
                 const float punchDrive = p*characterPunch*transient/(0.15f+transient);
                 float y = x[ch] + (punchDrive*0.6f)*lowMid;
-                y += (b*characterBody*0.24f)*lowMid;
+                // Bounded, low-band-only body gain. Upper snare/cymbal bands
+                // retain their direct path, avoiding a global darkening tilt.
+                y += (b*characterBody*0.16f)*lowMid;
                 // Tail moderation is signal-following and not a hard gate.
                 const float tail = std::clamp(static_cast<float>(s.sustain/(s.attack+0.01)),0.0f,1.0f);
                 y *= 1.0f-(t*characterTight*0.30f)*tail;
-                // FINISH: very conservative bounded soft saturation, nonlinear QA pending.
+                // Transient-preserving parallel soft clip: nonlinear residual
+                // affects sustain more strongly than the onset. Alias QA pending.
                 if (f>0.0f) {
-                    const float drive=1.0f+0.8f*f;
-                    y = y*(1.0f-f) + f*(std::tanh(y*drive)/drive);
+                    const float driveFactor=1.0f+0.5f*f;
+                    const float shaped=std::tanh(y*driveFactor)/driveFactor;
+                    const float transientProtect=std::max(0.0f,static_cast<float>(s.attack-s.sustain));
+                    const float mix=f*0.40f*(1.0f-transientProtect/(0.10f+transientProtect));
+                    y += mix*(shaped-y);
                 }
                 y*=attenuation*makeup;
                 if (ch==0) outLeft[i]=finite(y);
@@ -110,7 +125,8 @@ private:
     }
     double fs_=48000.0;
     double fastA_=0.99, slowA_=0.999, bodyA_=0.98;
-    double glueEnv_=0.0, tightEnvelope_=0.0;
+    double releaseA_=0.99;
+    double glueEnv_=0.0, tightEnvelope_=0.0, autoGain_=1.0;
     Channel channels_[2]{};
     Controls controls_{};
 };
