@@ -3,6 +3,7 @@
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/controls/ccontrol.h"
 #include "vstgui/lib/controls/cbuttons.h"
+#include "public.sdk/source/vst/vstparameters.h"
 #include "vstgui/uidescription/uiattributes.h"
 #include <cstring>
 #include <vector>
@@ -213,7 +214,11 @@ public:
         parameters.addParameter(STR16("Finish"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kFinish);
         parameters.addParameter(STR16("Glue"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kGlue);
         parameters.addParameter(STR16("Output"),STR16("dB"),0,0.5,ParameterInfo::kCanAutomate,kOutput);
-        parameters.addParameter(STR16("Character"),nullptr,2,0.5,ParameterInfo::kCanAutomate,kCharacter);
+        auto* character=new StringListParameter(STR16("Character"),kCharacter);
+        character->appendString(STR16("TIGHT"));
+        character->appendString(STR16("PUNCH"));
+        character->appendString(STR16("DENSE"));
+        parameters.addParameter(character);
         parameters.addParameter(STR16("Bypass"),nullptr,1,0,ParameterInfo::kCanAutomate|ParameterInfo::kIsBypass,kBypass);
         return kResultOk;
     }
