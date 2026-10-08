@@ -99,6 +99,16 @@ public:
         if(state){core_.reset(); bypassRamp_.reset(bypass_);}
         return AudioEffect::setActive(state);
     }
+    tresult PLUGIN_API setProcessing(TBool state) override {
+        // The SDK base returns kNotImplemented. Hosts require a successful
+        // processing-state transition after setupProcessing and activation.
+        if(state){
+            core_.reset();
+            bypassRamp_.reset(bypass_);
+        }
+        AudioEffect::setProcessing(state);
+        return kResultTrue;
+    }
     tresult PLUGIN_API canProcessSampleSize(int32 symbolic) override {
         return (symbolic==kSample32||symbolic==kSample64)?kResultTrue:kResultFalse;
     }
