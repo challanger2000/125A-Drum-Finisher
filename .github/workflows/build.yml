@@ -42,3 +42,5 @@ jobs:
           Write-Host "Plugin: $($plugin.FullName)"
           & $validator.FullName $plugin.FullName
           if ($LASTEXITCODE -ne 0) { throw "Steinberg Validator failed: $LASTEXITCODE" }
+          & $validator.FullName -l $plugin.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg local-instance Validator failed: $LASTEXITCODE" }
