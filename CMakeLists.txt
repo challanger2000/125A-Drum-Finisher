@@ -47,4 +47,8 @@ if(DRUM_BUILD_VST3)
         resource/125A_FinisherRing_H_192px_150pct.png)
     target_compile_features(125A_Drum_Finisher PRIVATE cxx_std_17)
     target_link_libraries(125A_Drum_Finisher PRIVATE sdk vstgui_support)
+    if(WIN32)
+        target_sources(125A_Drum_Finisher PRIVATE
+            "${VST3_SDK_ROOT}/public.sdk/source/main/dllmain.cpp")
+    endif()
 endif()
