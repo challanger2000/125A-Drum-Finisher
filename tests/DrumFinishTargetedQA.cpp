@@ -69,6 +69,44 @@ int main(){
         std::fprintf(stderr,"FINISH targeted response contract failed\n");
         return 1;
     }
+
+    // Multi-frequency sustained and decaying ring diagnostics. Report each
+    // band, but preserve existing single-tone pass criterion separately.
+    for(const double frequency : {260.0,550.0,1200.0,2700.0,4100.0,6500.0}){
+        std::vector<float> fixture(count);
+        for(int i=0;i<count;++i){
+            const double time=double(i)/rate;
+            const double base=0.09*std::sin(2*PI*110*time)
+                             +0.025*std::sin(2*PI*760*time);
+            fixture[i]=float(base+0.20*std::sin(2*PI*frequency*time));
+        }
+        auto out=render(fixture,1.f);
+        const double before=projection(fixture,frequency,rate,begin);
+        const double after=projection(out,frequency,rate,begin);
+        const double reduction=20*std::log10(std::max(1e-12,after)/std::max(1e-12,before));
+        std::printf("FINISH sweep %.0f Hz: %.3f dB\n",frequency,reduction);
+        if(!std::isfinite(reduction)||reduction>1.0||reduction < -12.0)
+            return 1;
+    }
+    // Impulsive resonant decay: a repeated 200-ms burst with an exponential
+    // tail. These are diagnostic metrics, not a claim of musical quality.
+    for(const double frequency : {550.0,2700.0,4100.0}){
+        std::vector<float> fixture(count,0.f);
+        for(int i=0;i<count;++i){
+            const double phase=double(i%rate)/rate;
+            const double env=std::exp(-phase/0.18);
+            fixture[i]=float(0.32*env*std::sin(2*PI*frequency*phase));
+        }
+        auto out=render(fixture,1.f);
+        double inTail=0,outTail=0;
+        for(int i=rate*2+rate/20;i<rate*2+rate/3;++i){
+            inTail+=double(fixture[i])*fixture[i];
+            outTail+=double(out[i])*out[i];
+        }
+        const double delta=10*std::log10(std::max(1e-18,outTail)/std::max(1e-18,inTail));
+        std::printf("FINISH decay %.0f Hz tail: %.3f dB\n",frequency,delta);
+        if(!std::isfinite(delta)||delta>1.0||delta < -12.0)return 1;
+    }
     std::puts("FINISH targeted injected-resonance regression: PASS");
     return 0;
 }
