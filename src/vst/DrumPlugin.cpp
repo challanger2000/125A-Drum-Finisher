@@ -124,7 +124,18 @@ public:
                 out.channelBuffers32[0],out.channelBuffers32[1],
                 static_cast<std::size_t>(data.numSamples));
         }
+        // Silence flags must describe actual output, not merely the input bus.
+        // In particular, an entirely silent channel stays silent under any
+        // active settings; nonlinear stages here do not self-oscillate.
         out.silenceFlags=0;
+        for (int32 ch=0;ch<2;++ch) {
+            bool silent=true;
+            const auto* samples=out.channelBuffers32[ch];
+            for (int32 i=0;i<data.numSamples;++i) {
+                if (samples[i]!=0.0f) {silent=false;break;}
+            }
+            if (silent)out.silenceFlags|=(uint64(1)<<ch);
+        }
         return kResultOk;
     }
     tresult PLUGIN_API getState(IBStream* stream) override {
