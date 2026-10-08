@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <cmath>
 #include <array>
+#include <utility>
 
 using namespace Steinberg;
 using namespace Steinberg::Vst;
@@ -209,12 +210,20 @@ public:
     tresult PLUGIN_API initialize(FUnknown* context) override {
         auto result=EditController::initialize(context);
         if(result!=kResultOk)return result;
-        parameters.addParameter(STR16("Punch"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kPunch);
-        parameters.addParameter(STR16("Body"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kBody);
-        parameters.addParameter(STR16("Tight"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kTight);
-        parameters.addParameter(STR16("Finish"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kFinish);
-        parameters.addParameter(STR16("Glue"),STR16("%"),0,0,ParameterInfo::kCanAutomate,kGlue);
-        parameters.addParameter(STR16("Output"),STR16("dB"),0,0.5,ParameterInfo::kCanAutomate,kOutput);
+        // Plain values match the units shown in host automation and GUI.
+        for(const auto& spec : std::array<std::pair<const TChar*,ParamID>,5>{{
+            {STR16("Punch"),kPunch},{STR16("Body"),kBody},
+            {STR16("Tight"),kTight},{STR16("Finish"),kFinish},
+            {STR16("Glue"),kGlue}}}) {
+            auto* param=new RangeParameter(spec.first,spec.second,STR16("%"),
+                0.0,100.0,0.0,0,ParameterInfo::kCanAutomate);
+            param->setPrecision(0);
+            parameters.addParameter(param);
+        }
+        auto* output=new RangeParameter(STR16("Output"),kOutput,STR16("dB"),
+            -12.0,12.0,0.0,0,ParameterInfo::kCanAutomate);
+        output->setPrecision(1);
+        parameters.addParameter(output);
         auto* character=new StringListParameter(STR16("Character"),kCharacter);
         character->appendString(STR16("TIGHT"));
         character->appendString(STR16("PUNCH"));

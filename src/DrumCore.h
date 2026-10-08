@@ -64,7 +64,10 @@ public:
         // When all macros are 0 and output is 0 dB, return a bit-exact passthrough.
         if (p == 0 && b == 0 && t == 0 && f == 0 && g == 0 && controls_.outputDb == 0) {
             for (std::size_t i=0; i<frames; ++i) {
-                outLeft[i]=left[i]; outRight[i]=right[i];
+                // Maintain exact passthrough for valid audio, but never
+                // forward non-finite host samples into downstream plug-ins.
+                outLeft[i]=finiteSample(left[i]);
+                outRight[i]=finiteSample(right[i]);
             }
             return;
         }

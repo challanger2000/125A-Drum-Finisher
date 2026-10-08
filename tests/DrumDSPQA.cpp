@@ -68,6 +68,22 @@ int main(){
         run(sr,N,c,x,x,a,b,64);
         check(a==b,"stereo linked symmetric output");
     }
+    // Non-finite host audio must not propagate even when all effects are off.
+    {
+        Core clean;
+        clean.prepare(48000.0);
+        Controls off{};
+        clean.setControls(off);
+        float aIn[]={std::numeric_limits<float>::quiet_NaN(),
+                     std::numeric_limits<float>::infinity(),0.25f};
+        float bIn[]={-std::numeric_limits<float>::infinity(),
+                     0.5f,0.0f};
+        float aOut[3]={},bOut[3]={};
+        clean.process(aIn,bIn,aOut,bOut,3);
+        check(aOut[0]==0.0f && aOut[1]==0.0f && aOut[2]==0.25f &&
+              bOut[0]==0.0f && bOut[1]==0.5f && bOut[2]==0.0f,
+              "neutral non-finite input sanitization");
+    }
     // The final controller code must not depend on NDEBUG for a test to execute.
     std::vector<float> impulse(N,0),zeros(N,0);
     impulse[0]=0.5f;
