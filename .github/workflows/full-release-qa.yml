@@ -2,10 +2,14 @@ name: Drum Finisher Full Release QA
 
 on:
   workflow_dispatch:
+  push:
+    branches: [v1.0.0-engineering]
+    paths: ['.github/workflows/full-release-qa.yml']
 
 jobs:
   release-qa:
     runs-on: windows-2022
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Drum Finisher
