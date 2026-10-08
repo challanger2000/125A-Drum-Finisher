@@ -48,8 +48,9 @@ public:
     const Controls& controls() const noexcept { return controls_; }
 
     // Interleaved-independent stereo buffers, in-place supported; no allocation or locks.
-    void process(const float* left, const float* right,
-                 float* outLeft, float* outRight, std::size_t frames) noexcept {
+    template<class Sample>
+    void processTyped(const Sample* left, const Sample* right,
+                      Sample* outLeft, Sample* outRight, std::size_t frames) noexcept {
         if (!left || !right || !outLeft || !outRight) return;
         const float p = controls_.punch;
         const float b = controls_.body;
@@ -68,8 +69,8 @@ public:
         const float characterBody = controls_.character == Character::Dense ? 1.15f : 0.85f;
         const float characterTight = controls_.character == Character::Tight ? 1.0f : 0.75f;
         for (std::size_t i=0; i<frames; ++i) {
-            const float x[2] = {finite(left[i]), finite(right[i])};
-            const float peak = std::max(std::abs(x[0]),std::abs(x[1]));
+            const Sample x[2] = {finiteSample(left[i]), finiteSample(right[i])};
+            const float peak = static_cast<float>(std::max(std::abs(x[0]),std::abs(x[1])));
             const double smooth = peak > glueEnv_ ? fastA_ : slowA_;
             glueEnv_ = smooth*glueEnv_+(1.0-smooth)*peak;
             tightEnvelope_ = slowA_*tightEnvelope_+(1.0-slowA_)*peak;
@@ -83,7 +84,7 @@ public:
             const float attenuation = static_cast<float>(autoGain_);
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
-                const float absx = std::abs(x[ch]);
+                const float absx = static_cast<float>(std::abs(x[ch]));
                 s.attack = fastA_*s.attack+(1.0-fastA_)*absx;
                 s.sustain = slowA_*s.sustain+(1.0-slowA_)*absx;
                 s.low = bodyA_*s.low+(1.0-bodyA_)*x[ch];
@@ -91,7 +92,7 @@ public:
                 // Bounded attack-driven enhancement, suppressed on high-passed cymbal component.
                 const float lowMid = static_cast<float>(s.low);
                 const float punchDrive = p*characterPunch*transient/(0.15f+transient);
-                float y = x[ch] + (punchDrive*0.6f)*lowMid;
+                double y = x[ch] + (punchDrive*0.6f)*lowMid;
                 // Bounded, low-band-only body gain. Upper snare/cymbal bands
                 // retain their direct path, avoiding a global darkening tilt.
                 y += (b*characterBody*0.16f)*lowMid;
@@ -111,11 +112,18 @@ public:
                     y -= strength*(y-static_cast<float>(s.highLow));
                 }
                 y*=attenuation*makeup;
-                if (ch==0) outLeft[i]=finite(y);
-                else outRight[i]=finite(y);
+                if (ch==0) outLeft[i]=finiteSample(static_cast<Sample>(y));
+                else outRight[i]=finiteSample(static_cast<Sample>(y));
             }
         }
     }
+    void process(const float* l,const float* r,float* ol,float* or_,std::size_t n) noexcept {
+        processTyped(l,r,ol,or_,n);
+    }
+    void process(const double* l,const double* r,double* ol,double* or_,std::size_t n) noexcept {
+        processTyped(l,r,ol,or_,n);
+    }
+
 private:
     struct Channel {
         double attack=0.0;
@@ -124,7 +132,8 @@ private:
         double highLow=0.0;
     };
     static float unit(float x) noexcept { return std::isfinite(x) ? std::clamp(x,0.0f,1.0f) : 0.0f; }
-    static float finite(float x) noexcept { return std::isfinite(x) ? x : 0.0f; }
+    template<class Sample>
+    static Sample finiteSample(Sample x) noexcept { return std::isfinite(x) ? x : Sample(0); }
     double pole(double seconds) const noexcept {
         return std::exp(-1.0/(std::max(1.0e-6,seconds)*fs_));
     }

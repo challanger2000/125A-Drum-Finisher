@@ -79,7 +79,7 @@ public:
         return kResultOk;
     }
     tresult PLUGIN_API setupProcessing(ProcessSetup& setup) override {
-        if (setup.symbolicSampleSize!=kSample32)return kResultFalse;
+        if (setup.symbolicSampleSize!=kSample32 && setup.symbolicSampleSize!=kSample64)return kResultFalse;
         core_.prepare(setup.sampleRate);
         return AudioEffect::setupProcessing(setup);
     }
@@ -88,7 +88,7 @@ public:
         return AudioEffect::setActive(state);
     }
     tresult PLUGIN_API canProcessSampleSize(int32 symbolic) override {
-        return symbolic==kSample32?kResultTrue:kResultFalse;
+        return (symbolic==kSample32||symbolic==kSample64)?kResultTrue:kResultFalse;
     }
     tresult PLUGIN_API setBusArrangements(SpeakerArrangement* ins,int32 nin,
         SpeakerArrangement* outs,int32 nout) override {
@@ -110,31 +110,44 @@ public:
         core_.setControls(controls_);
         if(data.numSamples<=0||data.numInputs<1||data.numOutputs<1)return kResultOk;
         auto& in=data.inputs[0];auto& out=data.outputs[0];
-        if(in.numChannels!=2||out.numChannels!=2||!in.channelBuffers32||!out.channelBuffers32)
-            return kResultFalse;
-        if(!in.channelBuffers32[0]||!in.channelBuffers32[1]||
-           !out.channelBuffers32[0]||!out.channelBuffers32[1])return kResultFalse;
-        if(bypass_) {
-            for(int32 i=0;i<data.numSamples;++i) {
-                out.channelBuffers32[0][i]=in.channelBuffers32[0][i];
-                out.channelBuffers32[1][i]=in.channelBuffers32[1][i];
+        if(in.numChannels!=2||out.numChannels!=2) return kResultFalse;
+        // Explicit precision branch; never access the wrong VST3 union member.
+        if(data.symbolicSampleSize==kSample32) {
+            if(!in.channelBuffers32||!out.channelBuffers32 ||
+               !in.channelBuffers32[0]||!in.channelBuffers32[1]||
+               !out.channelBuffers32[0]||!out.channelBuffers32[1])return kResultFalse;
+            if(bypass_) {
+                for(int32 i=0;i<data.numSamples;++i)
+                    for(int ch=0;ch<2;++ch)
+                        out.channelBuffers32[ch][i]=in.channelBuffers32[ch][i];
+            } else {
+                core_.process(in.channelBuffers32[0],in.channelBuffers32[1],
+                    out.channelBuffers32[0],out.channelBuffers32[1],
+                    static_cast<std::size_t>(data.numSamples));
             }
-        } else {
-            core_.process(in.channelBuffers32[0],in.channelBuffers32[1],
-                out.channelBuffers32[0],out.channelBuffers32[1],
-                static_cast<std::size_t>(data.numSamples));
-        }
-        // Silence flags must describe actual output, not merely the input bus.
-        // In particular, an entirely silent channel stays silent under any
-        // active settings; nonlinear stages here do not self-oscillate.
+        } else if(data.symbolicSampleSize==kSample64) {
+            if(!in.channelBuffers64||!out.channelBuffers64 ||
+               !in.channelBuffers64[0]||!in.channelBuffers64[1]||
+               !out.channelBuffers64[0]||!out.channelBuffers64[1])return kResultFalse;
+            if(bypass_) {
+                for(int32 i=0;i<data.numSamples;++i)
+                    for(int ch=0;ch<2;++ch)
+                        out.channelBuffers64[ch][i]=in.channelBuffers64[ch][i];
+            } else {
+                core_.process(in.channelBuffers64[0],in.channelBuffers64[1],
+                    out.channelBuffers64[0],out.channelBuffers64[1],
+                    static_cast<std::size_t>(data.numSamples));
+            }
+        } else return kResultFalse;
         out.silenceFlags=0;
-        for (int32 ch=0;ch<2;++ch) {
+        for(int32 ch=0;ch<2;++ch) {
             bool silent=true;
-            const auto* samples=out.channelBuffers32[ch];
-            for (int32 i=0;i<data.numSamples;++i) {
-                if (samples[i]!=0.0f) {silent=false;break;}
+            for(int32 i=0;i<data.numSamples;++i) {
+                const double sample=data.symbolicSampleSize==kSample32 ?
+                    out.channelBuffers32[ch][i] : out.channelBuffers64[ch][i];
+                if(sample!=0.0){silent=false;break;}
             }
-            if (silent)out.silenceFlags|=(uint64(1)<<ch);
+            if(silent)out.silenceFlags|=(uint64(1)<<ch);
         }
         return kResultOk;
     }
