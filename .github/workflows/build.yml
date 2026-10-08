@@ -29,6 +29,20 @@ jobs:
         run: cmake --build build --config Release --parallel 4
       - name: Contract tests
         run: ctest --test-dir build -C Release --output-on-failure --verbose
+      - name: Package Windows Studio One test VST3
+        shell: pwsh
+        run: |
+          $plugin = Get-ChildItem -Path build -Recurse -Directory -Filter "125A_Drum_Finisher.vst3" | Select-Object -First 1
+          if (-not $plugin) { throw "Missing built VST3 directory" }
+          New-Item -ItemType Directory -Force -Path "test-package" | Out-Null
+          Copy-Item -LiteralPath $plugin.FullName -Destination "test-package" -Recurse
+          Compress-Archive -Path "test-package/*" -DestinationPath "125A_Drum_Finisher_V1_Windows_x64_TEST.zip" -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 125A-Drum-Finisher-V1-Windows-x64-TEST
+          path: 125A_Drum_Finisher_V1_Windows_x64_TEST.zip
+          if-no-files-found: error
+          retention-days: 14
       - name: Steinberg Validator on 125A Drum Finisher
         shell: pwsh
         run: |

@@ -1,6 +1,8 @@
 #include "DrumCore.h"
 #include "gui/SteelKnob.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
+#include "vstgui/lib/controls/ccontrol.h"
+#include "vstgui/lib/controls/cbuttons.h"
 #include "vstgui/uidescription/uiattributes.h"
 #include <cstring>
 #include <vector>
@@ -199,7 +201,7 @@ private:
     bool bypass_=false;
     a125::drum::BypassRamp bypassRamp_{};
 };
-class Controller final : public EditController, public VSTGUI::VST3EditorDelegate {
+class Controller final : public EditController, public VSTGUI::VST3EditorDelegate, public VSTGUI::IControlListener {
 public:
     static FUnknown* createInstance(void*) {return static_cast<IEditController*>(new Controller);}
     tresult PLUGIN_API initialize(FUnknown* context) override {
@@ -219,6 +221,8 @@ public:
         if(!name || std::strcmp(name,ViewType::kEditor)!=0)return nullptr;
         auto* editor=new VSTGUI::VST3Editor(this,"view","DrumFinisher.uidesc");
         editor->setAllowedZoomFactors(std::vector<double>{1.0,1.5});
+        editor->setZoomFactor(zoom_);
+        editor_=editor;
         return editor;
     }
     VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
@@ -239,6 +243,26 @@ public:
         knob->setDefaultValue(tag==105?0.5f:0.0f);
         return knob;
     }
+    VSTGUI::CView* verifyView(VSTGUI::CView* view,
+        const VSTGUI::UIAttributes&,const VSTGUI::IUIDescription*,
+        VSTGUI::VST3Editor* editor) override {
+        auto* control=dynamic_cast<VSTGUI::CControl*>(view);
+        if(control && control->getTag()==9000){
+            editor_=editor;
+            control->setListener(this);
+            control->setValueNormalized(zoom_>=1.25?1.f:0.f);
+        }
+        return view;
+    }
+    void valueChanged(VSTGUI::CControl* control) override {
+        if(control && control->getTag()==9000 && editor_){
+            zoom_=control->getValueNormalized()>=0.5f?1.5:1.0;
+            editor_->setZoomFactor(zoom_);
+        }
+    }
+    void willClose(VSTGUI::VST3Editor* editor) override {
+        if(editor_==editor)editor_=nullptr;
+    }
     tresult PLUGIN_API setComponentState(IBStream* stream) override {
         Controls c;bool bypass=false;
         if(!loadState(stream,c,bypass))return kResultFalse;
@@ -246,6 +270,9 @@ public:
             setParamNormalized(id,normalized(c,id,bypass));
         return kResultOk;
     }
+private:
+    VSTGUI::VST3Editor* editor_=nullptr;
+    double zoom_=1.0;
 };
 } // namespace a125::drum::vst
 
