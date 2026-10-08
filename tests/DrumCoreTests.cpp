@@ -3,7 +3,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-static void verify(bool ok) { if (!ok) std::exit(EXIT_FAILURE); }\nint main() {
+static void verify(bool ok) { if (!ok) std::exit(EXIT_FAILURE); }
+int main() {
     using namespace a125::drum;
     Core core; core.prepare(48000);
     std::array<float, 512> x{},y{},a{},b{};
