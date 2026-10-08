@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include <array>
 
 using namespace Steinberg;
 using namespace Steinberg::Vst;
@@ -84,7 +85,7 @@ public:
         return AudioEffect::setupProcessing(setup);
     }
     tresult PLUGIN_API setActive(TBool state) override {
-        if(state)core_.reset();
+        if(state){core_.reset(); bypassMix_=bypass_?1.0:0.0;}
         return AudioEffect::setActive(state);
     }
     tresult PLUGIN_API canProcessSampleSize(int32 symbolic) override {
@@ -97,55 +98,52 @@ public:
         return AudioEffect::setBusArrangements(ins,nin,outs,nout);
     }
     tresult PLUGIN_API process(ProcessData& data) override {
-        if(data.inputParameterChanges) {
+        // Eight bounded parameter cursors; VST3 queues specify offsets inside the block.
+        std::array<Cursor,8> cursors{};
+        int used=0;
+        if(data.inputParameterChanges){
             auto* changes=data.inputParameterChanges;
-            for(int32 i=0;i<changes->getParameterCount();++i) {
-                auto* queue=changes->getParameterData(i);
-                if(!queue||queue->getPointCount()<=0)continue;
-                int32 offset=0;ParamValue value=0;
-                if(queue->getPoint(queue->getPointCount()-1,offset,value)==kResultOk)
-                    apply(controls_,queue->getParameterId(),value,bypass_);
+            for(int32 i=0;i<changes->getParameterCount();++i){
+                auto* q=changes->getParameterData(i);
+                if(!q||q->getPointCount()<=0)continue;
+                const auto id=q->getParameterId();
+                if(id<kPunch||id>kBypass)continue;
+                cursors[static_cast<std::size_t>(id-kPunch)]={q,0,q->getPointCount()};
+                ++used;
             }
         }
-        core_.setControls(controls_);
-        if(data.numSamples<=0||data.numInputs<1||data.numOutputs<1)return kResultOk;
+        (void)used;
+        if(data.numSamples<=0) {
+            // Process zero-frame parameter changes without touching audio buffers.
+            for(auto& cursor:cursors) if(cursor.queue){
+                int32 offset=0;ParamValue value=0;
+                if(cursor.queue->getPoint(cursor.count-1,offset,value)==kResultOk)
+                    apply(controls_,cursor.queue->getParameterId(),value,bypass_);
+            }
+            core_.setControls(controls_);
+            return kResultOk;
+        }
+        if(data.numInputs<1||data.numOutputs<1)return kResultFalse;
         auto& in=data.inputs[0];auto& out=data.outputs[0];
-        if(in.numChannels!=2||out.numChannels!=2) return kResultFalse;
-        // Explicit precision branch; never access the wrong VST3 union member.
-        if(data.symbolicSampleSize==kSample32) {
-            if(!in.channelBuffers32||!out.channelBuffers32 ||
+        if(in.numChannels!=2||out.numChannels!=2)return kResultFalse;
+        if(data.symbolicSampleSize==kSample32){
+            if(!in.channelBuffers32||!out.channelBuffers32||
                !in.channelBuffers32[0]||!in.channelBuffers32[1]||
                !out.channelBuffers32[0]||!out.channelBuffers32[1])return kResultFalse;
-            if(bypass_) {
-                for(int32 i=0;i<data.numSamples;++i)
-                    for(int ch=0;ch<2;++ch)
-                        out.channelBuffers32[ch][i]=in.channelBuffers32[ch][i];
-            } else {
-                core_.process(in.channelBuffers32[0],in.channelBuffers32[1],
-                    out.channelBuffers32[0],out.channelBuffers32[1],
-                    static_cast<std::size_t>(data.numSamples));
-            }
-        } else if(data.symbolicSampleSize==kSample64) {
-            if(!in.channelBuffers64||!out.channelBuffers64 ||
+            render(in.channelBuffers32,out.channelBuffers32,data.numSamples,cursors);
+        }else if(data.symbolicSampleSize==kSample64){
+            if(!in.channelBuffers64||!out.channelBuffers64||
                !in.channelBuffers64[0]||!in.channelBuffers64[1]||
                !out.channelBuffers64[0]||!out.channelBuffers64[1])return kResultFalse;
-            if(bypass_) {
-                for(int32 i=0;i<data.numSamples;++i)
-                    for(int ch=0;ch<2;++ch)
-                        out.channelBuffers64[ch][i]=in.channelBuffers64[ch][i];
-            } else {
-                core_.process(in.channelBuffers64[0],in.channelBuffers64[1],
-                    out.channelBuffers64[0],out.channelBuffers64[1],
-                    static_cast<std::size_t>(data.numSamples));
-            }
-        } else return kResultFalse;
+            render(in.channelBuffers64,out.channelBuffers64,data.numSamples,cursors);
+        }else return kResultFalse;
         out.silenceFlags=0;
-        for(int32 ch=0;ch<2;++ch) {
+        for(int32 ch=0;ch<2;++ch){
             bool silent=true;
-            for(int32 i=0;i<data.numSamples;++i) {
-                const double sample=data.symbolicSampleSize==kSample32 ?
-                    out.channelBuffers32[ch][i] : out.channelBuffers64[ch][i];
-                if(sample!=0.0){silent=false;break;}
+            for(int32 i=0;i<data.numSamples;++i){
+                const double v=data.symbolicSampleSize==kSample32?
+                    out.channelBuffers32[ch][i]:out.channelBuffers64[ch][i];
+                if(v!=0.0){silent=false;break;}
             }
             if(silent)out.silenceFlags|=(uint64(1)<<ch);
         }
@@ -158,12 +156,45 @@ public:
         Controls c=controls_; bool bypass=bypass_;
         if(!loadState(stream,c,bypass))return kResultFalse;
         controls_=c;bypass_=bypass;core_.setControls(c);core_.reset();
+        bypassMix_=bypass_?1.0:0.0;
         return kResultOk;
     }
 private:
+    struct Cursor { IParamValueQueue* queue=nullptr; int32 next=0,count=0; };
+    template<class Sample>
+    void render(Sample** in,Sample** out,int32 count,
+                std::array<Cursor,8>& cursors) noexcept {
+        for(int32 i=0;i<count;++i){
+            bool changed=false;
+            for(auto& cursor:cursors){
+                if(!cursor.queue)continue;
+                while(cursor.next<cursor.count){
+                    int32 offset=0;ParamValue value=0;
+                    if(cursor.queue->getPoint(cursor.next,offset,value)!=kResultOk){
+                        cursor.next=cursor.count;break;
+                    }
+                    if(offset>i)break;
+                    apply(controls_,cursor.queue->getParameterId(),value,bypass_);
+                    ++cursor.next;changed=true;
+                }
+            }
+            if(changed||i==0)core_.setControls(controls_);
+            const Sample dryL=in[0][i],dryR=in[1][i];
+            Sample wetL=0,wetR=0;
+            // Continue the wet engine while bypassed, avoiding cold state on return.
+            core_.process(&dryL,&dryR,&wetL,&wetR,1);
+            const double target=bypass_?1.0:0.0;
+            const double increment=1.0/64.0;
+            if(bypassMix_<target)bypassMix_=std::min(target,bypassMix_+increment);
+            else if(bypassMix_>target)bypassMix_=std::max(target,bypassMix_-increment);
+            out[0][i]=static_cast<Sample>((1.0-bypassMix_)*wetL+bypassMix_*dryL);
+            out[1][i]=static_cast<Sample>((1.0-bypassMix_)*wetR+bypassMix_*dryR);
+        }
+    }
     Core core_{};
     Controls controls_{};
     bool bypass_=false;
+    double bypassMix_=0.0;
 };
 class Controller final : public EditController {
 public:
