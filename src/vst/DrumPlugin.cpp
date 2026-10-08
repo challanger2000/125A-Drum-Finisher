@@ -157,7 +157,7 @@ public:
         Controls c=controls_; bool bypass=bypass_;
         if(!loadState(stream,c,bypass))return kResultFalse;
         controls_=c;bypass_=bypass;core_.setControls(c);core_.reset();
-        bypassMix_=bypass_?1.0:0.0;
+        bypassRamp_.reset(bypass_);
         return kResultOk;
     }
 private:
