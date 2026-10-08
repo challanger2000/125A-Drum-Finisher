@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vstgui-ui-description version="1">
+  <colors>
+    <color name="Text" rgba="#F2F3F5FF"/>
+    <color name="Muted" rgba="#AAB0B9FF"/>
+    <color name="Panel" rgba="#1A1D22FF"/>
+    <color name="Accent" rgba="#B07848FF"/>
+  </colors>
+  <fonts>
+    <font name="Title" font-name="Arial" size="25" bold="true"/>
+    <font name="Label" font-name="Arial" size="13" bold="true"/>
+    <font name="Small" font-name="Arial" size="11"/>
+  </fonts>
+  <template name="view" class="CViewContainer" origin="0,0" size="1200,540" transparent="false" background-color="Panel">
+    <view class="CTextLabel" origin="200,24" size="800,42" title="125A DRUM FINISHER V1" font="Title" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="275,75" size="650,24" title="PRECISION DRUM BUS FINISHING" font="Small" font-color="Muted" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="75,162" size="120,22" title="PUNCH" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="260,162" size="120,22" title="BODY" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="445,162" size="120,22" title="TIGHT" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="630,162" size="120,22" title="FINISH" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="815,162" size="120,22" title="GLUE" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="1000,162" size="120,22" title="OUTPUT" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="425,393" size="350,24" title="CHARACTER: TIGHT / PUNCH / DENSE" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="445,510" size="310,18" title="125A SYSTEMS  •  ENGINEERING V1" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
+    <view class="CTextButton" origin="1030,440" size="115,36" title="BYPASS" control-tag="107" default-value="0" font="Label" text-color="Text" frame-color="Accent" round-radius="4"/>
+    <view class="COptionMenu" origin="470,430" size="260,33" control-tag="106" font="Label" font-color="Text" back-color="Panel" frame-color="Accent"/>
+    <view class="CControl" custom-view-name="DrumKnobPunch" origin="70,196" size="125,125" control-tag="100"/>
+    <view class="CControl" custom-view-name="DrumKnobBody" origin="255,196" size="125,125" control-tag="101"/>
+    <view class="CControl" custom-view-name="DrumKnobTight" origin="440,196" size="125,125" control-tag="102"/>
+    <view class="CControl" custom-view-name="DrumKnobFinish" origin="625,196" size="125,125" control-tag="103"/>
+    <view class="CControl" custom-view-name="DrumKnobGlue" origin="810,196" size="125,125" control-tag="104"/>
+    <view class="CControl" custom-view-name="DrumKnobOutput" origin="995,196" size="125,125" control-tag="105"/>
+  </template>
+</vstgui-ui-description>
