@@ -200,7 +200,11 @@ private:
                 }
             }
             if(changed||i==0)core_.setControls(controls_);
-            const Sample dryL=in[0][i],dryR=in[1][i];
+            // The bypass crossfade must not reintroduce NaN/Inf from the
+            // original host buffer after DrumCore sanitizes the wet signal.
+            // Preserve valid finite values bit-for-bit at full bypass.
+            const Sample dryL=std::isfinite(in[0][i]) ? in[0][i] : Sample(0);
+            const Sample dryR=std::isfinite(in[1][i]) ? in[1][i] : Sample(0);
             Sample wetL=0,wetR=0;
             // Continue the wet engine while bypassed, avoiding cold state on return.
             core_.process(&dryL,&dryR,&wetL,&wetR,1);
