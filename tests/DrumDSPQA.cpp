@@ -68,6 +68,51 @@ int main(){
         run(sr,N,c,x,x,a,b,64);
         check(a==b,"stereo linked symmetric output");
     }
+    // Independent module isolation and in-place processing contracts.
+    // These tests cover real asymmetric stereo content rather than duplicated mono.
+    {
+        constexpr std::size_t M=16384;
+        std::vector<float> l(M),r(M),wetL(M),wetR(M),inPlaceL(M),inPlaceR(M);
+        for(std::size_t i=0;i<M;++i) {
+            const double seconds=double(i)/48000.0;
+            const double onset=std::fmod(seconds,0.17);
+            l[i]=float(0.42*std::exp(-onset*23.0)*std::sin(2*pi*81*seconds)
+                      +0.10*std::sin(2*pi*1700*seconds));
+            r[i]=float(0.24*std::exp(-onset*33.0)*std::sin(2*pi*147*seconds)
+                      -0.08*std::sin(2*pi*3700*seconds));
+        }
+        for(int module=0;module<5;++module) {
+            Controls isolated{};
+            switch(module) {
+                case 0: isolated.punch=1.0f;break;
+                case 1: isolated.body=1.0f;break;
+                case 2: isolated.tight=1.0f;break;
+                case 3: isolated.finish=1.0f;break;
+                case 4: isolated.glue=1.0f;break;
+            }
+            run(48000,M,isolated,l,r,wetL,wetR,256);
+            inPlaceL=l;
+            inPlaceR=r;
+            Core inplace;
+            inplace.prepare(48000);
+            inplace.setControls(isolated);
+            for(std::size_t pos=0;pos<M;pos+=256)
+                inplace.process(inPlaceL.data()+pos,inPlaceR.data()+pos,
+                                inPlaceL.data()+pos,inPlaceR.data()+pos,
+                                std::min(std::size_t(256),M-pos));
+            check(inPlaceL==wetL && inPlaceR==wetR,
+                  "isolated module in-place equals out-of-place");
+            check(std::all_of(wetL.begin(),wetL.end(),[](float v){return std::isfinite(v);}) &&
+                  std::all_of(wetR.begin(),wetR.end(),[](float v){return std::isfinite(v);}),
+                  "isolated module finite stereo");
+            double diff=0.0;
+            for(std::size_t i=0;i<M;++i)
+                diff+=std::abs(double(wetL[i])-l[i])+std::abs(double(wetR[i])-r[i]);
+            std::cout<<"isolated module="<<module
+                     <<" mean absolute stereo change="<<diff/(2*M)<<"\\n";
+            check(diff>1.e-7,"isolated module actually processes audio");
+        }
+    }
     // Host lifecycle robustness: invalid sample-rate input must not poison DSP.
     for(double invalidRate : {std::numeric_limits<double>::quiet_NaN(),
                               std::numeric_limits<double>::infinity(),
