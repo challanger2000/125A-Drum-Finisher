@@ -107,6 +107,19 @@ int main(){
         std::printf("FINISH decay %.0f Hz tail: %.3f dB\n",frequency,delta);
         if(!std::isfinite(delta)||delta>1.0||delta < -12.0)return 1;
     }
+
+    // Selectivity check: a lone sustained tone must not be interpreted as
+    // proof of an undesirable resonance. Report the actual attenuation.
+    for(const double frequency : {260.0,1200.0,4100.0}){
+        std::vector<float> pure(count);
+        for(int i=0;i<count;++i) pure[i]=float(0.18*std::sin(2*PI*frequency*i/rate));
+        const auto treated=render(pure,1.f);
+        const double inputMag=projection(pure,frequency,rate,begin);
+        const double outputMag=projection(treated,frequency,rate,begin);
+        const double db=20*std::log10(std::max(1e-12,outputMag)/inputMag);
+        std::printf("FINISH pure musical tone %.0f Hz: %.3f dB\n",frequency,db);
+        if(!std::isfinite(db) || db < -12.0 || db > 1.0) return 1;
+    }
     std::puts("FINISH targeted injected-resonance regression: PASS");
     return 0;
 }
