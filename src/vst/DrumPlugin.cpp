@@ -245,7 +245,15 @@ public:
         character->getInfo().defaultNormalizedValue=0.5;
         character->setNormalized(0.5);
         parameters.addParameter(character);
-        parameters.addParameter(STR16("Bypass"),nullptr,1,0,ParameterInfo::kCanAutomate|ParameterInfo::kIsBypass,kBypass);
+        // A discrete, host-automatable bypass parameter with labels that
+        // match the GUI: index 0 processes audio; index 1 bypasses it.
+        // Preserve ParamID 107 and its normalized 0/1 state semantics.
+        auto* bypassParameter=new StringListParameter(
+            STR16("Bypass"),kBypass,nullptr,
+            ParameterInfo::kCanAutomate|ParameterInfo::kIsList|ParameterInfo::kIsBypass);
+        bypassParameter->appendString(STR16("ON"));
+        bypassParameter->appendString(STR16("BYPASS"));
+        parameters.addParameter(bypassParameter);
         return kResultOk;
     }
     IPlugView* PLUGIN_API createView(FIDString name) override {
@@ -286,14 +294,16 @@ public:
         auto* control=dynamic_cast<VSTGUI::CControl*>(view);
         if(control){
             const auto tag=control->getTag();
-            if(tag==9000||tag==kCharacter||tag==kBypass){
+            if(tag==9000){
+                // Zoom is UI-only and deliberately not a VST3 parameter.
                 editor_=editor;
                 control->setListener(this);
-                if(tag==9000)
-                    control->setValueNormalized(zoom_>=1.25?1.f:0.f);
-                else
-                    control->setValueNormalized(static_cast<float>(
-                        getParamNormalized(static_cast<ParamID>(tag))));
+                control->setValueNormalized(zoom_>=1.25?1.f:0.f);
+            }else if(tag==kCharacter||tag==kBypass){
+                // These are actual VST3 parameters. Do not steal their
+                // listener: VST3Editor registers its ParameterChangeListener
+                // and synchronizes clicks, automation and project recall.
+                control->setListener(editor);
             }
         }
         return view;
@@ -306,19 +316,7 @@ public:
             editor_->setZoomFactor(zoom_);
             return;
         }
-        if(tag==kCharacter||tag==kBypass){
-            const auto id=static_cast<ParamID>(tag);
-            const double normalized=tag==kCharacter
-                ? (control->getValueNormalized()<0.25f?0.0:
-                   control->getValueNormalized()<0.75f?0.5:1.0)
-                : (control->getValueNormalized()>=0.5f?1.0:0.0);
-            // Explicit VST3 host automation gesture for segment clicks.
-            beginEdit(id);
-            setParamNormalized(id,normalized);
-            performEdit(id,normalized);
-            endEdit(id);
-            control->setValueNormalized(static_cast<float>(normalized));
-        }
+        // CHARACTER and BYPASS are handled by VST3Editor, not here.
     }
     void willClose(VSTGUI::VST3Editor* editor) override {
         if(editor_==editor)editor_=nullptr;

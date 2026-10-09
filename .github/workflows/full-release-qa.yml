@@ -18,6 +18,9 @@ jobs:
       - name: Checkout Drum Finisher
         uses: actions/checkout@v4
 
+      - name: Verify VSTGUI tags and native segment parameter bindings
+        run: python tests/gui_control_contract_qa.py
+
       - name: Configure Drum Finisher
         shell: pwsh
         run: |
