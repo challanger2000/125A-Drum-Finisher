@@ -6,7 +6,7 @@ SOURCES={
  "SpeedMetal":"MusicDelta_SpeedMetal_Drum.wav",
  "Grunge":"MusicDelta_Grunge_Drum.wav",
  "Disco":"MusicDelta_Disco_Drum.wav",
- "FusionJazz":"MusicDelta_FusionJazz_Drum.wav",
+ "Country":"MusicDelta_Country1_Drum.wav",
 }
 BASE="https://raw.githubusercontent.com/CarlSouthall/MDBDrums/master/MDB%20Drums/audio/drum_only/"
 def rms(a):return math.sqrt(sum(v*v for v in a)/max(1,len(a)))
