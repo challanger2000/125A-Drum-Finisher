@@ -113,6 +113,54 @@ int main(){
             check(diff>1.e-7,"isolated module actually processes audio");
         }
     }
+    // TIGHT functional proof: compare early attack and late decay on repeated
+    // decaying drum hits, referenced to the same unprocessed programme.
+    {
+        constexpr std::size_t M=48000;
+        const double sr=48000.0;
+        std::vector<float> input(M),right(M),processedL(M),processedR(M);
+        for(std::size_t i=0;i<M;++i) {
+            double phase=std::fmod(double(i)/sr,0.25);
+            input[i]=float(0.5*std::exp(-phase*18.0)*
+                     (std::sin(2*pi*90.0*double(i)/sr)
+                       +0.15*std::sin(2*pi*2800.0*double(i)/sr)));
+            right[i]=input[i]*0.47f;
+        }
+        auto windowRms=[](const std::vector<float>& audio,
+                          std::size_t start,std::size_t end) {
+            double energy=0;
+            for(std::size_t i=start;i<end;++i)energy+=double(audio[i])*audio[i];
+            return std::sqrt(energy/double(end-start));
+        };
+        double previousTail=0.0;
+        for(float amount : {0.0f,0.25f,0.5f,1.0f}) {
+            Controls tight{};tight.tight=amount;
+            run(sr,M,tight,input,right,processedL,processedR,127);
+            // Use the second strike to exclude detector initialization.
+            const std::size_t start=12000;
+            const double earlyDry=windowRms(input,start+240,start+1200);
+            const double earlyWet=windowRms(processedL,start+240,start+1200);
+            const double lateDry=windowRms(input,start+4800,start+8400);
+            const double lateWet=windowRms(processedL,start+4800,start+8400);
+            const double earlyDb=20*std::log10(earlyWet/earlyDry);
+            const double lateDb=20*std::log10(lateWet/lateDry);
+            const double tailRelativeDb=lateDb-earlyDb;
+            std::cout<<"TIGHT amount="<<amount<<" early_dB="<<earlyDb
+                     <<" late_dB="<<lateDb
+                     <<" tail_vs_attack_dB="<<tailRelativeDb<<"\\n";
+            if(amount==0.0f)
+                check(processedL==input && processedR==right,
+                      "TIGHT at zero must remain bit-exact");
+            else {
+                check(lateDb<0.0,"TIGHT must attenuate late decay");
+                check(tailRelativeDb<0.0,
+                      "TIGHT must reduce tail relative to attack");
+                check(tailRelativeDb<=previousTail+0.05,
+                      "TIGHT relative tail control must increase monotonically");
+            }
+            previousTail=tailRelativeDb;
+        }
+    }
     // Host lifecycle robustness: invalid sample-rate input must not poison DSP.
     for(double invalidRate : {std::numeric_limits<double>::quiet_NaN(),
                               std::numeric_limits<double>::infinity(),
