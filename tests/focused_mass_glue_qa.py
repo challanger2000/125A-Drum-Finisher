@@ -81,6 +81,28 @@ for amount in (.25,.5,.75,1.):
             raise AssertionError("GLUE input-level dependence: "+str((amount,metric,values)))
 # Asymmetric stereo input with identical waveform shape: stereo-linked GLUE
 # should apply the same evolving gain curve to both channels.
+# MASS: quantify useful generated harmonics, not just the overall RMS delta.
+# The dry reference uses precisely the same tone and gain staging, so the
+# measured delta distinguishes nonlinear density from simple volume changes.
+for level in levels:
+    subset=[r for r in rows if r["module"]=="MASS" and r["input_relative_db"]==level]
+    dry=next(r for r in subset if r["amount"]==0.0)
+    full=next(r for r in subset if r["amount"]==1.0)
+    full["generated_harmonic_delta_db"]=round(
+        full["harmonics_to_fundamentals_db"]-dry["harmonics_to_fundamentals_db"],4)
+    full["generated_imd_delta_db"]=round(
+        full["imd_to_fundamentals_db"]-dry["imd_to_fundamentals_db"],4)
+    print("MASS_EFFECT",level,
+          "harmonics_delta_db",full["generated_harmonic_delta_db"],
+          "imd_delta_db",full["generated_imd_delta_db"],
+          "rms_delta_db",full["rms_change_db"],flush=True)
+# These are effect-characterization data, not evidence of musical preference.
+# On 100% the DSP must actually introduce a measurable spectral change.
+fullscale=[r for r in rows if r["module"]=="MASS" and r["amount"]==1.0]
+if not all(math.isfinite(r["generated_harmonic_delta_db"]) for r in fullscale):
+    raise AssertionError("MASS harmonic measurement is nonfinite")
+if not any(r["generated_harmonic_delta_db"]>0.25 for r in fullscale):
+    raise AssertionError("MASS 100 percent has no demonstrable harmonic effect")
 for amount in (.25,1.):
     wl,wr=render(pulse,[.35*v for v in pulse],"GLUE",amount,
                  "stereo_link_%d"%int(amount*100))
