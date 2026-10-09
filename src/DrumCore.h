@@ -72,16 +72,10 @@ public:
         const float f = controls_.finish;
         const float g = controls_.glue;
         const float makeup = makeup_;
-        // When all macros are 0 and output is 0 dB, return a bit-exact passthrough.
-        if (p == 0 && b == 0 && t == 0 && f == 0 && g == 0 && controls_.outputDb == 0) {
-            for (std::size_t i=0; i<frames; ++i) {
-                // Maintain exact passthrough for valid audio, but never
-                // forward non-finite host samples into downstream plug-ins.
-                outLeft[i]=finiteSample(left[i]);
-                outRight[i]=finiteSample(right[i]);
-            }
-            return;
-        }
+        // A neutral output must still advance detector state: otherwise
+        // automating a module from 0% starts with stale envelopes.
+        const bool neutral = p == 0 && b == 0 && t == 0 && f == 0 &&
+                             g == 0 && controls_.outputDb == 0;
         const float characterPunch = controls_.character == Character::Punch ? 1.0f : 0.75f;
         const float characterBody = controls_.character == Character::Dense ? 1.15f : 0.85f;
         const float characterTight = controls_.character == Character::Tight ? 1.0f : 0.75f;
@@ -182,8 +176,8 @@ public:
             resonance_.processFrame(fl,fr,f);
             // Correction is applied to the already rendered channel outputs.
             // Only the delta is added; unity at FINISH=0 remains bit-exact.
-            outLeft[i]=finiteSample(static_cast<Sample>(outLeft[i]+(fl-finishPairLeft_)*attenuation*makeup));
-            outRight[i]=finiteSample(static_cast<Sample>(outRight[i]+(fr-finishPairRight_)*attenuation*makeup));
+            outLeft[i]=neutral ? x[0] : finiteSample(static_cast<Sample>(outLeft[i]+(fl-finishPairLeft_)*attenuation*makeup));
+            outRight[i]=neutral ? x[1] : finiteSample(static_cast<Sample>(outRight[i]+(fr-finishPairRight_)*attenuation*makeup));
         }
     }
     void process(const float* l,const float* r,float* ol,float* or_,std::size_t n) noexcept {

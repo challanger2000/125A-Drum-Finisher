@@ -57,5 +57,26 @@ int main() {
         if (std::abs(a[i]-x[i])>0.000001f) tightActive=true;
     }
     verify(tightActive);
+    // On a 0% -> PUNCH automation transition, envelope state should be
+    // identical to the same programme processed continuously with PUNCH on.
+    Core automation; automation.prepare(48000);
+    Core continuous; continuous.prepare(48000);
+    Controls on; on.punch=1.0f;
+    continuous.setControls(on);
+    std::array<float,512> dryLeft{},dryRight{},outA{},outB{},refL{},refR{};
+    for (std::size_t i=0;i<dryLeft.size();++i) {
+        dryLeft[i]=0.5f*std::sin(float(i)*0.12f);
+        dryRight[i]=0.35f*dryLeft[i];
+    }
+    for (int block=0;block<8;++block) {
+        automation.process(dryLeft.data(),dryRight.data(),outA.data(),outB.data(),dryLeft.size());
+        continuous.process(dryLeft.data(),dryRight.data(),refL.data(),refR.data(),dryLeft.size());
+    }
+    automation.setControls(on);
+    automation.process(dryLeft.data(),dryRight.data(),outA.data(),outB.data(),dryLeft.size());
+    continuous.process(dryLeft.data(),dryRight.data(),refL.data(),refR.data(),dryLeft.size());
+    for (std::size_t i=0;i<dryLeft.size();++i) {
+        verify(outA[i]==refL[i] && outB[i]==refR[i]);
+    }
     std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch and tight)\n";
 }
