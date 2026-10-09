@@ -96,6 +96,43 @@ int main(){
     run(48000,N,bad,impulse,zeros,a,b,64);
     check(std::all_of(a.begin(),a.end(),[](float v){return std::isfinite(v);}),
           "invalid control sanitization");
+    // Full-chain matrix: combinations must remain finite, repeatable and
+    // partition-independent. This is a safety contract, not a sonic PASS.
+    for(float amount : {0.0f,0.25f,0.5f,0.75f,1.0f}) {
+        Controls combined{};
+        combined.punch=amount;
+        combined.body=amount;
+        combined.tight=amount;
+        combined.finish=amount;
+        combined.glue=amount;
+        combined.character=Character::Dense;
+        for(double sr : {44100.0,48000.0,96000.0}) {
+            for(std::size_t i=0;i<N;++i) {
+                double time=double(i)/sr;
+                double phase=std::fmod(time,0.5);
+                double kick=0.35*std::sin(2*pi*75*time)*std::exp(-phase*24.0);
+                double snare=0.16*std::sin(2*pi*210*time)*std::exp(-phase*35.0);
+                double cymbal=0.07*std::sin(2*pi*6900*time)*std::exp(-phase*5.0);
+                x[i]=float(kick+snare+cymbal);
+                y[i]=float(0.65*kick+0.82*snare-0.9*cymbal);
+            }
+            run(sr,N,combined,x,y,refA,refB,N);
+            for(std::size_t block : {std::size_t(1),std::size_t(64),std::size_t(511)}) {
+                run(sr,N,combined,x,y,a,b,block);
+                check(a==refA && b==refB,"full-chain block invariance");
+                check(std::all_of(a.begin(),a.end(),[](float v){return std::isfinite(v);}),
+                      "full-chain left finite");
+                check(std::all_of(b.begin(),b.end(),[](float v){return std::isfinite(v);}),
+                      "full-chain right finite");
+            }
+            if(amount==0.0f)
+                check(refA==x && refB==y,"full-chain zero neutral");
+            std::cout<<"full-chain amount="<<amount<<" sampleRate="<<sr
+                     <<" left_rms_delta_dB="<<20*std::log10(std::max(1.e-12,rms(refA))/std::max(1.e-12,rms(x)))
+                     <<" right_rms_delta_dB="<<20*std::log10(std::max(1.e-12,rms(refB))/std::max(1.e-12,rms(y)))
+                     <<" left_peak="<<peak(refA)<<" right_peak="<<peak(refB)<<"\\n";
+        }
+    }
     if(failures){std::cerr<<"Drum DSP QA: "<<failures<<" FAILED checks\n";return EXIT_FAILURE;}
     std::cout<<"Drum DSP QA: PASS (functional contracts; sound-quality validation pending)\n";
     return EXIT_SUCCESS;
