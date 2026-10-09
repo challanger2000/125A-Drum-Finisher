@@ -29,7 +29,7 @@ public:
         constexpr double twoPi=6.283185307179586;
         bodyHighA_ = pole(1.0/(twoPi*350.0));
         bodyLowA_ = pole(1.0/(twoPi*110.0));
-        glueDetectorAttackA_ = pole(0.018);
+        glueDetectorAttackA_ = pole(0.012);
         glueDetectorReleaseA_ = pole(0.180);
         glueRmsA_ = pole(0.350);
         glueGainAttackA_ = pole(0.025);
@@ -102,15 +102,15 @@ public:
                 glueTargetGain_=1.0;
                 if(g>0.0f){
                     const double threshold=std::clamp(
-                        2.5*std::sqrt(std::max(0.0,glueRmsEnergy_)),
-                        0.065,0.35);
+                        1.35*std::sqrt(std::max(0.0,glueRmsEnergy_)),
+                        0.025,0.25);
                     const double overDb=20.0*std::log10(
                         std::max(1.0e-12,glueEnv_)/threshold);
                     constexpr double halfKnee=3.0;
                     const double above=overDb<=-halfKnee?0.0:
                         (overDb>=halfKnee?overDb:
                         (overDb+halfKnee)*(overDb+halfKnee)/(4.0*halfKnee));
-                    const double ratio=1.0+1.5*g;
+                    const double ratio=1.0+2.0*g;
                     const double reductionDb=std::min(
                         6.0,above*(1.0-1.0/ratio));
                     glueTargetGain_=std::pow(10.0,-reductionDb/20.0);
@@ -120,7 +120,7 @@ public:
                 glueGainAttackA_:glueGainReleaseA_;
             autoGain_=gainA*autoGain_+(1.0-gainA)*glueTargetGain_;
             // Restrained parallel dynamics preserves more of the dry attack.
-            const float attenuation=static_cast<float>(1.0-0.65*g*(1.0-autoGain_));
+            const float attenuation=static_cast<float>(1.0-0.80*g*(1.0-autoGain_));
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
                 const float absx = static_cast<float>(std::abs(x[ch]));
