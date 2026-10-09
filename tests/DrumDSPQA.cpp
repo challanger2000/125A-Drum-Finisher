@@ -161,6 +161,86 @@ int main(){
             previousTail=tailRelativeDb;
         }
     }
+    // Signal-relative transfer must not change with host gain staging.
+    // Test a realistic percussive spectrum well below nonlinear saturation,
+    // independently of the intentionally level-dependent harmonic residual.
+    {
+        constexpr std::size_t M=48000;
+        std::vector<float> baseL(M),baseR(M),inputL(M),inputR(M),outL(M),outR(M);
+        const double sr=48000.0;
+        for(std::size_t i=0;i<M;++i) {
+            const double seconds=double(i)/sr;
+            const double phase=std::fmod(seconds,0.25);
+            const double low=std::exp(-phase*24.0)*std::sin(2*pi*75*seconds);
+            const double mid=std::exp(-phase*36.0)*std::sin(2*pi*210*seconds);
+            baseL[i]=float(0.008*low+0.003*mid);
+            baseR[i]=float(0.005*low-0.002*mid);
+        }
+        for(int module=0;module<3;++module) {
+            bool haveReference=false;
+            double referenceGainDb=0.0;
+            for(double inputDb : {-18.0,-12.0,-6.0,0.0,6.0}) {
+                const float inputGain=float(std::pow(10.0,inputDb/20.0));
+                for(std::size_t i=0;i<M;++i) {
+                    inputL[i]=baseL[i]*inputGain;
+                    inputR[i]=baseR[i]*inputGain;
+                }
+                Controls settings{};
+                if(module==0)settings.punch=1.0f;
+                if(module==1)settings.body=1.0f;
+                if(module==2)settings.tight=1.0f;
+                run(sr,M,settings,inputL,inputR,outL,outR,127);
+                const double gainDb=20.0*std::log10(
+                    std::max(1.0e-15,rms(outL))/std::max(1.0e-15,rms(inputL)));
+                if(!haveReference) {
+                    referenceGainDb=gainDb;
+                    haveReference=true;
+                }
+                std::cout<<"relative detector module="<<module
+                         <<" input="<<inputDb<<" dB, output/input="
+                         <<gainDb<<" dB\n";
+                check(std::abs(gainDb-referenceGainDb)<0.08,
+                      "envelope module response must be input-level invariant");
+                if(module==0)check(gainDb>0.5,
+                      "PUNCH must amplify attack even at low host level");
+                if(module==1)check(gainDb>0.2,
+                      "MASS must add low-mid energy at low host level");
+            }
+        }
+    }
+    // Calibrated MASS band response on sustained low-level single tones:
+    // target roughly 3 dB at 75 and 196 Hz at 100%; 0% stays bit-exact.
+    // These are design targets, not absolute psychoacoustic thresholds.
+    {
+        constexpr std::size_t M=48000;
+        std::vector<float> in(M),right(M),wet(M),wetR(M);
+        for(double frequency : {75.0,196.0}) {
+            for(std::size_t i=0;i<M;++i) {
+                in[i]=float(0.02*std::sin(2*pi*frequency*double(i)/48000.0));
+                right[i]=in[i];
+            }
+            double previousDb=-1.0;
+            for(float amount : {0.0f,0.25f,0.5f,1.0f}) {
+                Controls mass{};mass.body=amount;
+                run(48000.0,M,mass,in,right,wet,wetR,256);
+                double dryPower=0.0,wetPower=0.0;
+                for(std::size_t i=M/2;i<M;++i) {
+                    dryPower+=double(in[i])*in[i];
+                    wetPower+=double(wet[i])*wet[i];
+                }
+                const double boost=10*std::log10(wetPower/dryPower);
+                std::cout<<"MASS tone="<<frequency<<" Hz amount="
+                         <<amount<<" boost="<<boost<<" dB\n";
+                if(amount==0.0f)check(wet==in && wetR==right,
+                                     "MASS 0% must remain exact dry");
+                else check(boost>previousDb+0.10,
+                           "MASS control must progressively add body");
+                if(amount==1.0f)check(boost>=2.5 && boost<=3.8,
+                                      "MASS measured 100% tonal gain");
+                previousDb=boost;
+            }
+        }
+    }
     // Host lifecycle robustness: invalid sample-rate input must not poison DSP.
     for(double invalidRate : {std::numeric_limits<double>::quiet_NaN(),
                               std::numeric_limits<double>::infinity(),

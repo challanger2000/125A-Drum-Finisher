@@ -7,7 +7,7 @@
 #define verify(expr) do { \
     if (!(expr)) { \
         std::cerr << "DrumCoreTests FAIL at line " << __LINE__ \
-                  << ": " << #expr << '\\n'; \
+                  << ": " << #expr << '\n'; \
         return EXIT_FAILURE; \
     } \
 } while (false)

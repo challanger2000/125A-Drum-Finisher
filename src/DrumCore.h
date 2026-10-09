@@ -129,10 +129,12 @@ public:
                 s.attack = fastA_*s.attack+(1.0-fastA_)*absx;
                 s.sustain = slowA_*s.sustain+(1.0-slowA_)*absx;
                 linkedTransient = std::max(linkedTransient,
-                    std::max(0.0, s.attack-s.sustain));
+                    std::max(0.0, (s.attack-s.sustain)/(s.attack+s.sustain+1.0e-12)));
             }
+            // Differential amplitude ratio: identical drum transients produce
+            // the same attack boost at different input gain settings.
             const float punchDrive = p*characterPunch*
-                static_cast<float>(linkedTransient/(0.12+linkedTransient));
+                static_cast<float>(linkedTransient);
             // TIGHT also uses a common stereo-linked envelope so one channel's
             // longer decay cannot cause image movement or channel imbalance.
             double linkedTail = 0.0;
@@ -154,7 +156,7 @@ public:
             for (int ch=0; ch<2; ++ch) {
                 const Channel& s = channels_[ch];
                 linkedSustainWeight = std::max(linkedSustainWeight,
-                    std::clamp(s.sustain/(s.attack+0.02),0.0,1.0));
+                    std::clamp(s.sustain/(s.attack+1.0e-12),0.0,1.0));
             }
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
@@ -172,6 +174,10 @@ public:
                 const double kickBand=s.kickHigh-s.kickLow;
                 const double bodyBand=s.bodyHigh-s.bodyLow;
                 const double sustainWeight=linkedSustainWeight;
+                // MASS: gain calibrated against the two summed one-pole band
+                // responses: ~3 dB on sustained 75 Hz and 196 Hz at 100%
+                // with default character. Harmonic residual remains parallel.
+                // The sustain detector is gain-relative, not tied to 0.02 FS.
                 // MASS: low-mid density plus controlled parallel harmonic shaping.
                 // Keep old BODY parameter ID and state compatibility.
                 const double massAmount=b*characterBody;
@@ -183,7 +189,7 @@ public:
                 const double harmonicResidual=bodyBand-
                     std::tanh(massDrive*bodyBand)/massDrive;
                 y+=massAmount*sustainWeight*
-                    (0.28*kickBand+0.38*bodyBand+0.28*harmonicResidual);
+                    (0.60*kickBand+0.60*bodyBand+0.28*harmonicResidual);
                 // Tail moderation is signal-following and not a hard gate.
                 y *= tightGain;
                 // The FINISH detector processes both pre-output channels together.
