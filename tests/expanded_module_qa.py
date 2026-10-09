@@ -33,9 +33,9 @@ def fft_power_bands(x,fs):
  # Hann-windowed radix-2 FFT with Parseval-consistent relative band powers.
  # Unlike sparse sinusoid projections, this integrates every spectral bin.
  n=4096
- if len(x)<n:return {key:0.0 for key in ("35_200","200_1200","1200_5000","5000_14000")}
+ if len(x)<n:return {key:0.0 for key in ("35_200","42_135","135_350","200_1200","1200_5000","5000_14000")}
  window=[.5-.5*math.cos(2*math.pi*i/(n-1)) for i in range(n)]
- bands=((35,200),(200,1200),(1200,5000),(5000,14000))
+ bands=((35,200),(42,135),(135,350),(200,1200),(1200,5000),(5000,14000))
  sums={f"{lo}_{hi}":0.0 for lo,hi in bands}
  # Use four nonoverlapping windows spread across the first four seconds.
  for start in [int((len(x)-n)*k/4) for k in range(4)]:
@@ -97,7 +97,7 @@ for label,filename in files.items():
 with (root/"expanded_metrics.csv").open("w",newline="") as f:
  w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
 (root/"expanded_qa_coverage.json").write_text(json.dumps({
- "metrics":"RMS; RMS-matched crest; 10ms envelope displacement; transient peak ratio; lag-1 correlation; Hann-windowed broadband FFT band integration; clipping",
+ "metrics":"RMS; RMS-matched crest; 10ms envelope displacement; transient peak ratio; lag-1 correlation; Hann-windowed broadband FFT band integration including kick fundamental 42-135 Hz and low-mid 135-350 Hz; clipping",
  "test_count":len(rows),"not_covered":"LUFS/true peak; phase/group delay; THD/IMD/aliasing; true stereo imaging; perceptual listening; realtime CPU; sample-rate sweep",
  "qualification":"FFT band analysis integrates the full defined band; frequency resolution varies with sample rate. Mono source duplicated into stereo. These are diagnostics, not sonic PASS criteria."},indent=2))
 print("EXPANDED_METRICS",len(rows),"COMPLETE",flush=True)

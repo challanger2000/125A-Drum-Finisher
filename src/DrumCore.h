@@ -142,6 +142,15 @@ public:
                     std::clamp(s.sustain/(s.attack+0.01),0.0,1.0));
             }
             const double tightGain = 1.0-(t*characterTight*0.30)*linkedTail;
+            // The MASS sustain detector also uses the stereo pair. Separate
+            // L/R weights would reshape equally timed hits differently merely
+            // because one channel is quieter.
+            double linkedSustainWeight = 0.0;
+            for (int ch=0; ch<2; ++ch) {
+                const Channel& s = channels_[ch];
+                linkedSustainWeight = std::max(linkedSustainWeight,
+                    std::clamp(s.sustain/(s.attack+0.02),0.0,1.0));
+            }
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
                 s.kickHigh=kickHighA_*s.kickHigh+(1.0-kickHighA_)*x[ch];
@@ -157,8 +166,7 @@ public:
                 // lowpasses. No uncontrolled sub-bass or permanent shelf.
                 const double kickBand=s.kickHigh-s.kickLow;
                 const double bodyBand=s.bodyHigh-s.bodyLow;
-                const double sustainWeight=std::clamp(
-                    s.sustain/(s.attack+0.02),0.0,1.0);
+                const double sustainWeight=linkedSustainWeight;
                 // MASS: low-mid density plus controlled parallel harmonic shaping.
                 // Keep old BODY parameter ID and state compatibility.
                 const double massAmount=b*characterBody;

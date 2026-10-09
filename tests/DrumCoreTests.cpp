@@ -95,5 +95,14 @@ int main() {
         wetEnergy+=double(a[i])*a[i];
     }
     verify(wetEnergy>dryEnergy);
+    // MASS must preserve left/right equality with a polarity-inverted
+    // coherent stereo pair; the shared sustain detector must not favor one.
+    core.reset();
+    for (std::size_t i=0;i<x.size();++i) y[i]=-x[i];
+    core.process(x.data(),y.data(),a.data(),b.data(),x.size());
+    for(std::size_t i=0;i<x.size();++i) {
+        verify(std::isfinite(a[i]) && std::isfinite(b[i]));
+        verify(std::abs(a[i]+b[i])<0.000002f);
+    }
     std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch and tight)\n";
 }
