@@ -141,7 +141,12 @@ public:
                 linkedTail = std::max(linkedTail,
                     std::clamp(s.sustain/(s.attack+0.01),0.0,1.0));
             }
-            const double tightGain = 1.0-(t*characterTight*0.30)*linkedTail;
+            // Use a defined decibel attenuation law rather than the previous
+            // arbitrary linear 30% ceiling (~3.1 dB). At full TIGHT the
+            // linked tail detector can apply up to 6 dB of reduction (half
+            // the amplitude); transient-leading intervals receive less.
+            const double tightGain = std::pow(10.0,
+                (-6.0*t*characterTight*linkedTail)/20.0);
             // The MASS sustain detector also uses the stereo pair. Separate
             // L/R weights would reshape equally timed hits differently merely
             // because one channel is quieter.
