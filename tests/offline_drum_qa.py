@@ -65,6 +65,37 @@ for label,filename in SOURCES.items():
                         relative_residual=round(delta,5)))
     print("LEVEL_MATCHED",label,module,amount,"crest_delta_db",round(delta,4),flush=True)
     out.unlink()
+  # Input-level robustness: preserve programme dynamics across gain staging.
+  # Deliberately use 8 seconds to limit CI cost; never clip valid input.
+  segment=inp[:min(len(inp),sr*8*2)]
+  originalPeak=max(abs(v) for v in segment)
+  level_checks=[]
+  for module in ("MASS","GLUE"):
+   for level_db in (-18,-12,-6,0,6):
+    scale=10**(level_db/20)
+    if originalPeak*scale>=0.98:
+     continue # Document rather than clipping source to force a PASS.
+    scaled=array.array("f",(v*scale for v in segment))
+    test_in=ROOT/"level_in.f32";test_out=ROOT/"level_out.f32"
+    test_in.write_bytes(scaled.tobytes())
+    subprocess.run([sys.argv[1],str(test_in),str(test_out),str(sr),module,"0.5"],check=True)
+    processed=asfloat(test_out)
+    if len(processed)!=len(scaled) or not all(math.isfinite(v) for v in processed):
+     raise ValueError("invalid level-sweep render")
+    input_rms=rms(scaled); output_rms=rms(processed)
+    peak_before=max(abs(v) for v in scaled)
+    peak_after=max(abs(v) for v in processed)
+    level_checks.append(dict(module=module,input_offset_db=level_db,
+       input_rms_dbfs=round(db(input_rms),4),
+       output_rms_delta_db=round(db(output_rms)-db(input_rms),4),
+       crest_delta_db=round(db(peak_after)-db(output_rms)-
+                            (db(peak_before)-db(input_rms)),4)))
+    test_in.unlink();test_out.unlink()
+  (ROOT/(label+"_input_level.json")).write_text(json.dumps(level_checks,indent=2))
+  for check in level_checks:
+   print("LEVEL_SWEEP",label,check["module"],check["input_offset_db"],
+         "gain_db",check["output_rms_delta_db"],
+         "crest_db",check["crest_delta_db"],flush=True)
   # Multiple resonant drum-ring frequencies, identical real programme.
   # Render baseline only once; no artificial threshold-based pass claims.
   if label=="SpeedMetal":
