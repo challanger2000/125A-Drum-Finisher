@@ -102,7 +102,8 @@ void AdaptiveResonanceSuppressor::prepare(
 
     transientFastA_=timeCoefficient(sampleRate_,2.0);
     transientSlowA_=timeCoefficient(sampleRate_,100.0);
-    // Extend the broadband attack guard slightly to protect high-frequency\n    // stick noise; hold and release windows remain unchanged.\n    transientDelaySamples_=static_cast<std::size_t>(sampleRate_*0.028);
+    // 18ms reference restored: 28ms guard harmed measured attack preservation.
+    transientDelaySamples_=static_cast<std::size_t>(sampleRate_*0.018);
     onsetHoldSamples_=static_cast<std::size_t>(sampleRate_*0.36);
     refractorySamples_=static_cast<std::size_t>(sampleRate_*0.07);
     reset();
