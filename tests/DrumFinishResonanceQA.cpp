@@ -38,12 +38,15 @@ int main() {
     const auto relativeDifference=std::sqrt(differenceEnergy/inputEnergy);
     std::cout<<"FINISH 100% sustained two-tone: RMS delta dB="<<delta
              <<", normalized residual="<<relativeDifference<<"\n";
-    // Nonzero effect and bounded output on synthetic sustained resonances.
-    if(!std::isfinite(delta)||delta>0.5||delta< -6.0||
-       relativeDifference<1e-5||relativeDifference>0.6) {
-        std::cerr<<"FAIL: FINISH response out of safe diagnostic envelope\n";
+    // A stationary two-tone signal has no repeated drum onset.
+    // FINISH is now decay/onset-gated: preserve such musical sustained tones.
+    // Deliberately injected drum-ring decays are tested separately in
+    // DrumFinishTargetedQA.cpp, where a nonzero suppression is mandatory.
+    if(!std::isfinite(delta)||!std::isfinite(relativeDifference)||
+       std::abs(delta)>0.15||relativeDifference>0.02) {
+        std::cerr<<"FAIL: FINISH altered protected sustained tones\n";
         return EXIT_FAILURE;
     }
-    std::cout<<"FINISH synthetic resonance regression: PASS\n";
+    std::cout<<"FINISH sustained-tone protection: PASS\n";
     return EXIT_SUCCESS;
 }
