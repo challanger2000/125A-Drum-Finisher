@@ -1,4 +1,5 @@
 name: Drum Stem Offline Audio QA
+# Revalidation on 6dbab03: current onset-gated FINISH DSP; retain reports for A/B.
 on:
   workflow_dispatch:
   push:

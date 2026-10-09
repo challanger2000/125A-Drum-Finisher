@@ -1,4 +1,5 @@
 name: Drum Finisher Full Release QA
+# Revalidation on 6dbab03: current onset-gated FINISH DSP; retain reports for A/B.
 # Retest current lifecycle fix 7eeb9337 after the first 125A QA 31/0/4 failure.
 
 on:
