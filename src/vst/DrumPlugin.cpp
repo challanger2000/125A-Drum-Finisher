@@ -280,17 +280,40 @@ public:
         const VSTGUI::UIAttributes&,const VSTGUI::IUIDescription*,
         VSTGUI::VST3Editor* editor) override {
         auto* control=dynamic_cast<VSTGUI::CControl*>(view);
-        if(control && control->getTag()==9000){
-            editor_=editor;
-            control->setListener(this);
-            control->setValueNormalized(zoom_>=1.25?1.f:0.f);
+        if(control){
+            const auto tag=control->getTag();
+            if(tag==9000||tag==kCharacter||tag==kBypass){
+                editor_=editor;
+                control->setListener(this);
+                if(tag==9000)
+                    control->setValueNormalized(zoom_>=1.25?1.f:0.f);
+                else
+                    control->setValueNormalized(static_cast<float>(
+                        getParamNormalized(static_cast<ParamID>(tag))));
+            }
         }
         return view;
     }
     void valueChanged(VSTGUI::CControl* control) override {
-        if(control && control->getTag()==9000 && editor_){
+        if(!control)return;
+        const auto tag=control->getTag();
+        if(tag==9000 && editor_){
             zoom_=control->getValueNormalized()>=0.5f?1.5:1.0;
             editor_->setZoomFactor(zoom_);
+            return;
+        }
+        if(tag==kCharacter||tag==kBypass){
+            const auto id=static_cast<ParamID>(tag);
+            const double normalized=tag==kCharacter
+                ? (control->getValueNormalized()<0.25f?0.0:
+                   control->getValueNormalized()<0.75f?0.5:1.0)
+                : (control->getValueNormalized()>=0.5f?1.0:0.0);
+            // Explicit VST3 host automation gesture for segment clicks.
+            beginEdit(id);
+            setParamNormalized(id,normalized);
+            performEdit(id,normalized);
+            endEdit(id);
+            control->setValueNormalized(static_cast<float>(normalized));
         }
     }
     void willClose(VSTGUI::VST3Editor* editor) override {
