@@ -29,11 +29,11 @@ public:
         constexpr double twoPi=6.283185307179586;
         bodyHighA_ = pole(1.0/(twoPi*350.0));
         bodyLowA_ = pole(1.0/(twoPi*110.0));
-        glueDetectorAttackA_ = pole(0.002);
-        glueDetectorReleaseA_ = pole(0.150);
+        glueDetectorAttackA_ = pole(0.018);
+        glueDetectorReleaseA_ = pole(0.180);
         glueRmsA_ = pole(0.350);
-        glueGainAttackA_ = pole(0.005);
-        glueGainReleaseA_ = pole(0.180);
+        glueGainAttackA_ = pole(0.025);
+        glueGainReleaseA_ = pole(0.240);
         resonance_.prepare(fs_);
         reset();
     }
@@ -110,16 +110,17 @@ public:
                     const double above=overDb<=-halfKnee?0.0:
                         (overDb>=halfKnee?overDb:
                         (overDb+halfKnee)*(overDb+halfKnee)/(4.0*halfKnee));
-                    const double ratio=1.0+2.5*g;
+                    const double ratio=1.0+1.5*g;
                     const double reductionDb=std::min(
-                        18.0,above*(1.0-1.0/ratio));
+                        6.0,above*(1.0-1.0/ratio));
                     glueTargetGain_=std::pow(10.0,-reductionDb/20.0);
                 }
             }
             const double gainA=glueTargetGain_<autoGain_?
                 glueGainAttackA_:glueGainReleaseA_;
             autoGain_=gainA*autoGain_+(1.0-gainA)*glueTargetGain_;
-            const float attenuation=static_cast<float>(autoGain_);
+            // Restrained parallel dynamics preserves more of the dry attack.
+            const float attenuation=static_cast<float>(1.0-0.65*g*(1.0-autoGain_));
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
                 const float absx = static_cast<float>(std::abs(x[ch]));
@@ -138,7 +139,11 @@ public:
                 const double bodyBand=s.bodyHigh-s.bodyLow;
                 const double sustainWeight=std::clamp(
                     s.sustain/(s.attack+0.02),0.0,1.0);
-                y+=b*characterBody*0.60*sustainWeight*bodyBand;
+                // MASS: low-mid density plus controlled parallel harmonic shaping.
+                // Keep old BODY parameter ID and state compatibility.
+                const double massAmount=b*characterBody;
+                const double density=std::tanh(2.5*bodyBand)/std::tanh(2.5)-bodyBand;
+                y+=massAmount*sustainWeight*(0.42*bodyBand+0.28*density);
                 // Tail moderation is signal-following and not a hard gate.
                 const float tail = std::clamp(static_cast<float>(s.sustain/(s.attack+0.01)),0.0f,1.0f);
                 y *= 1.0f-(t*characterTight*0.30f)*tail;

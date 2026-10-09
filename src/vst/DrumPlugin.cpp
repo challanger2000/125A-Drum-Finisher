@@ -222,7 +222,7 @@ public:
         if(result!=kResultOk)return result;
         // Plain values match the units shown in host automation and GUI.
         for(const auto& spec : std::array<std::pair<const TChar*,ParamID>,5>{{
-            {STR16("Punch"),kPunch},{STR16("Body"),kBody},
+            {STR16("Punch"),kPunch},{STR16("Mass"),kBody},
             {STR16("Tight"),kTight},{STR16("Finish"),kFinish},
             {STR16("Glue"),kGlue}}}) {
             auto* param=new RangeParameter(spec.first,spec.second,STR16("%"),

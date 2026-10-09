@@ -17,7 +17,7 @@
     <view class="CTextLabel" origin="200,24" size="800,42" title="125A DRUM FINISHER V1" font="Title" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
     <view class="CTextLabel" origin="275,75" size="650,24" title="PRECISION DRUM BUS FINISHING" font="Small" font-color="Muted" transparent="true" text-alignment="center" mouse-enabled="false"/>
     <view class="CTextLabel" origin="75,162" size="120,22" title="PUNCH" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="260,162" size="120,22" title="BODY" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="260,162" size="120,22" title="MASS" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
     <view class="CTextLabel" origin="445,162" size="120,22" title="TIGHT" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
     <view class="CTextLabel" origin="630,162" size="120,22" title="FINISH" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
     <view class="CTextLabel" origin="815,162" size="120,22" title="GLUE" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
