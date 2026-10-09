@@ -96,6 +96,36 @@ int main(){
     run(48000,N,bad,impulse,zeros,a,b,64);
     check(std::all_of(a.begin(),a.end(),[](float v){return std::isfinite(v);}),
           "invalid control sanitization");
+    // Stereo image contract for dynamics-only combinations: a common gain
+    // must preserve the L/R ratio, including asymmetric input and hard panning.
+    for (double sr : {44100.0,48000.0,96000.0}) {
+        for (float ratio : {0.0f,0.25f,0.65f,1.0f}) {
+            for (float amount : {0.25f,0.5f,1.0f}) {
+                for (int mode=0; mode<3; ++mode) {
+                    Controls c{};
+                    if(mode==0 || mode==2) { c.punch=amount; c.tight=amount; }
+                    if(mode==1 || mode==2) c.glue=amount;
+                    c.character=Character::Punch;
+                    for(std::size_t i=0;i<N;++i) {
+                        const double seconds=double(i)/sr;
+                        const double beat=std::fmod(seconds,0.25);
+                        x[i]=float(0.6*std::exp(-beat*30.0)*
+                            (std::sin(2*pi*85.0*seconds)+0.25*std::sin(2*pi*3200.0*seconds)));
+                        y[i]=ratio*x[i];
+                    }
+                    run(sr,N,c,x,y,a,b,127);
+                    for(std::size_t i=0;i<N;++i) {
+                        check(std::isfinite(a[i])&&std::isfinite(b[i]),
+                              "stereo-linked dynamics finite");
+                        if(std::abs(b[i]-ratio*a[i])>2.e-6f) {
+                            check(false,"stereo-linked dynamics image preserved");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
     // Full-chain matrix: combinations must remain finite, repeatable and
     // partition-independent. This is a safety contract, not a sonic PASS.
     for(float amount : {0.0f,0.25f,0.5f,0.75f,1.0f}) {
