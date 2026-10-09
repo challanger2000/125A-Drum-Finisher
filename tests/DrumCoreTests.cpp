@@ -3,7 +3,14 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-static void verify(bool ok) { if (!ok) std::exit(EXIT_FAILURE); }
+// Fail with the precise contract and source line, not a silent exit.
+#define verify(expr) do { \
+    if (!(expr)) { \
+        std::cerr << "DrumCoreTests FAIL at line " << __LINE__ \
+                  << ": " << #expr << '\\n'; \
+        return EXIT_FAILURE; \
+    } \
+} while (false)
 int main() {
     using namespace a125::drum;
     Core core; core.prepare(48000);
@@ -50,13 +57,14 @@ int main() {
     Controls tightOnly; tightOnly.tight=1.0f;
     core.setControls(tightOnly); core.reset();
     core.process(x.data(),y.data(),a.data(),b.data(),x.size());
-    bool tightActive=false;
+    // A sustain reducer must not turn a 10.7-ms initial attack into
+    // a quieter attack. The long-decay and amount-sweep behaviour is
+    // measured independently in DrumDSPQA.cpp.
     for (std::size_t i=0;i<x.size();++i) {
         verify(std::isfinite(a[i]) && std::isfinite(b[i]));
         verify(std::abs(b[i]-0.35f*a[i])<0.000002f);
-        if (std::abs(a[i]-x[i])>0.000001f) tightActive=true;
+        verify(std::abs(a[i]-x[i])<0.000001f);
     }
-    verify(tightActive);
     // On a 0% -> PUNCH automation transition, envelope state should be
     // identical to the same programme processed continuously with PUNCH on.
     Core automation; automation.prepare(48000);
@@ -104,5 +112,5 @@ int main() {
         verify(std::isfinite(a[i]) && std::isfinite(b[i]));
         verify(std::abs(a[i]+b[i])<0.000002f);
     }
-    std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch and tight)\n";
+    std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch and tight; attack protected)\n";
 }
