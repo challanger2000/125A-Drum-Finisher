@@ -43,6 +43,8 @@ if(DRUM_BUILD_VST3)
     if(NOT DEFINED VST3_SDK_ROOT OR NOT EXISTS "${VST3_SDK_ROOT}/CMakeLists.txt")
         message(FATAL_ERROR "VST3_SDK_ROOT must point to an existing Steinberg SDK 3.8.1 checkout")
     endif()
+    # CI builds must not attempt to create links in protected Windows VST3 folders.
+    set(SMTG_CREATE_PLUGIN_LINK OFF CACHE BOOL "" FORCE)
     set(SMTG_ENABLE_VSTGUI_SUPPORT ON CACHE BOOL "" FORCE)
     add_subdirectory("${VST3_SDK_ROOT}" "${CMAKE_BINARY_DIR}/vst3sdk")
     smtg_add_vst3plugin(125A_Drum_Finisher src/vst/DrumPlugin.cpp src/DrumCore.h src/dsp/AdaptiveResonanceSuppressor.cpp src/gui/SteelKnob.cpp src/gui/SteelKnob.h src/gui/BrandLogoView.cpp src/gui/BrandLogoView.h)
