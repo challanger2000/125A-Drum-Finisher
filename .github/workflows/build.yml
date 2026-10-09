@@ -1,13 +1,8 @@
 name: Drum Finisher V1 Build and Core QA
 
+# Full Windows SDK build is intentionally manual to conserve paid CI minutes.
+# Batch DSP changes and trigger once after local/offline QA.
 on:
-  push:
-    branches: [v1.0.0-engineering]
-    paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'CMakeLists.txt'
-      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
