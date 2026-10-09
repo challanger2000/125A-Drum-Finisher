@@ -52,7 +52,28 @@ for label,filename in SOURCES.items():
    baseline_path=ROOT/"baseline_FINISH100.f32"
    subprocess.run([sys.argv[1],str(raw),str(baseline_path),str(sr),"FINISH","1"],check=True)
    baseline=asfloat(baseline_path)
-   onset_indices=list(range(sr,length-sr//2,sr))
+   # Detect real programme transients from channel-averaged short-time energy.
+   # 5ms windows, preceding 60ms median-like mean floor, 120ms refractory.
+   hop=max(1,int(sr*0.005))
+   energy=[]
+   for start in range(0,length-hop,hop):
+    energy.append(sum(0.5*(inp[2*i]**2+inp[2*i+1]**2)
+                      for i in range(start,start+hop))/hop)
+   candidates=[]
+   for k in range(12,len(energy)-2):
+    previous=sorted(energy[k-12:k])[6]
+    if energy[k]>max(0.000015,previous*3.0) and energy[k]>=energy[k-1] and energy[k]>energy[k+1]:
+     candidates.append((energy[k]/max(previous,1e-8),k*hop))
+   candidates.sort(reverse=True)
+   onset_indices=[]
+   for _,sample in candidates:
+    if sample<sr or sample>length-int(sr*0.5):continue
+    if all(abs(sample-chosen)>=int(sr*0.12) for chosen in onset_indices):
+     onset_indices.append(sample)
+    if len(onset_indices)>=35:break
+   onset_indices.sort()
+   if len(onset_indices)<8:raise ValueError("Too few natural transients detected")
+   print("NATURAL_ONSETS",len(onset_indices),flush=True)
    frequency_reports=[]
    for freq in (550.0,1200.0,2700.0,4100.0):
     altered=array.array("f",inp)
