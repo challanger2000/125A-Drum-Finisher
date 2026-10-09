@@ -149,8 +149,15 @@ public:
                 // MASS: low-mid density plus controlled parallel harmonic shaping.
                 // Keep old BODY parameter ID and state compatibility.
                 const double massAmount=b*characterBody;
-                const double density=std::tanh(2.5*bodyBand)/std::tanh(2.5)-bodyBand;
-                y+=massAmount*sustainWeight*(0.42*bodyBand+0.28*density);
+                // Bass Finisher-derived principle: only the nonlinear odd-harmonic
+                // residual is added. Normalize the waveshaper by drive so its
+                // small-signal slope is unity; the old tanh(2.5) normalization
+                // unintentionally inserted additional linear band gain.
+                constexpr double massDrive=2.5;
+                const double harmonicResidual=bodyBand-
+                    std::tanh(massDrive*bodyBand)/massDrive;
+                y+=massAmount*sustainWeight*
+                    (0.42*bodyBand+0.28*harmonicResidual);
                 // Tail moderation is signal-following and not a hard gate.
                 const float tail = std::clamp(static_cast<float>(s.sustain/(s.attack+0.01)),0.0f,1.0f);
                 y *= 1.0f-(t*characterTight*0.30f)*tail;
