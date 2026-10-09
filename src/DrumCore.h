@@ -22,7 +22,10 @@ struct Controls {
 class Core {
 public:
     void prepare(double sampleRate) noexcept {
-        fs_ = std::clamp(sampleRate, 8000.0, 384000.0);
+        // Hosts can supply an invalid rate during unusual lifecycle paths.
+        // Never allow NaN/Infinity to poison every detector coefficient.
+        fs_ = std::isfinite(sampleRate)
+            ? std::clamp(sampleRate, 8000.0, 384000.0) : 48000.0;
         // Temporal constants are provisional until validated on drum fixtures.
         fastA_ = pole(0.002);
         slowA_ = pole(0.055);

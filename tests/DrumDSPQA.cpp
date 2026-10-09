@@ -68,6 +68,26 @@ int main(){
         run(sr,N,c,x,x,a,b,64);
         check(a==b,"stereo linked symmetric output");
     }
+    // Host lifecycle robustness: invalid sample-rate input must not poison DSP.
+    for(double invalidRate : {std::numeric_limits<double>::quiet_NaN(),
+                              std::numeric_limits<double>::infinity(),
+                              -std::numeric_limits<double>::infinity()}) {
+        Core invalid;
+        invalid.prepare(invalidRate);
+        Controls active{};
+        active.punch=active.body=active.tight=active.finish=active.glue=1.0f;
+        invalid.setControls(active);
+        std::array<float,64> left{},right{},outL{},outR{};
+        for(std::size_t i=0;i<left.size();++i) {
+            left[i]=float(0.3*std::sin(0.1*double(i)));
+            right[i]=float(0.2*std::cos(0.13*double(i)));
+        }
+        invalid.process(left.data(),right.data(),outL.data(),outR.data(),left.size());
+        check(std::all_of(outL.begin(),outL.end(),[](float x){return std::isfinite(x);}),
+              "invalid host sample rate left finite");
+        check(std::all_of(outR.begin(),outR.end(),[](float x){return std::isfinite(x);}),
+              "invalid host sample rate right finite");
+    }
     // Non-finite host audio must not propagate even when all effects are off.
     {
         Core clean;
