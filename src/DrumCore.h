@@ -134,6 +134,15 @@ public:
             }
             const float punchDrive = p*characterPunch*
                 static_cast<float>(linkedTransient/(0.12+linkedTransient));
+            // TIGHT also uses a common stereo-linked envelope so one channel's
+            // longer decay cannot cause image movement or channel imbalance.
+            double linkedTail = 0.0;
+            for (int ch=0; ch<2; ++ch) {
+                const Channel& s = channels_[ch];
+                linkedTail = std::max(linkedTail,
+                    std::clamp(s.sustain/(s.attack+0.01),0.0,1.0));
+            }
+            const double tightGain = 1.0-(t*characterTight*0.30)*linkedTail;
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
                 s.bodyHigh=bodyHighA_*s.bodyHigh+(1.0-bodyHighA_)*x[ch];
@@ -159,8 +168,7 @@ public:
                 y+=massAmount*sustainWeight*
                     (0.42*bodyBand+0.28*harmonicResidual);
                 // Tail moderation is signal-following and not a hard gate.
-                const float tail = std::clamp(static_cast<float>(s.sustain/(s.attack+0.01)),0.0f,1.0f);
-                y *= 1.0f-(t*characterTight*0.30f)*tail;
+                y *= tightGain;
                 // The FINISH detector processes both pre-output channels together.
                 if(ch==0) finishPairLeft_=y;
                 else finishPairRight_=y;

@@ -45,5 +45,17 @@ int main() {
         if (std::abs(a[i]-x[i])>0.000001f) punchActive=true;
     }
     verify(punchActive);
-    std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch)\n";
+    // TIGHT must apply identical gain to different-level left and right
+    // programme material, preserving stereo balance through the decay.
+    Controls tightOnly; tightOnly.tight=1.0f;
+    core.setControls(tightOnly); core.reset();
+    core.process(x.data(),y.data(),a.data(),b.data(),x.size());
+    bool tightActive=false;
+    for (std::size_t i=0;i<x.size();++i) {
+        verify(std::isfinite(a[i]) && std::isfinite(b[i]));
+        verify(std::abs(b[i]-0.35f*a[i])<0.000002f);
+        if (std::abs(a[i]-x[i])>0.000001f) tightActive=true;
+    }
+    verify(tightActive);
+    std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch and tight)\n";
 }
