@@ -17,6 +17,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile actual DrumCore offline renderer
         run: g++ -std=c++17 -O2 -I src tests/offline_render.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_offline_render
+      - name: Compile and run core, bypass and DSP contract regression tests
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -I src tests/DrumCoreTests.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_core_tests
+          ./drum_core_tests
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -I src tests/DrumBypassQA.cpp -o drum_bypass_qa
+          ./drum_bypass_qa
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -I src tests/DrumDSPQA.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_dsp_qa
+          ./drum_dsp_qa
       - name: Download, render and measure licensed drum-only fixtures
         run: python3 tests/offline_drum_qa.py ./drum_offline_render
       - name: Extended programme-level module measurements
