@@ -78,5 +78,22 @@ int main() {
     for (std::size_t i=0;i<dryLeft.size();++i) {
         verify(outA[i]==refL[i] && outB[i]==refR[i]);
     }
+    // MASS must act on kick fundamentals around 75 Hz without requiring
+    // high-level upper-mid content. Preserve finite stereo output.
+    Controls massOnly; massOnly.body=1.0f;
+    core.setControls(massOnly); core.reset();
+    double dryEnergy=0.0, wetEnergy=0.0;
+    for (std::size_t i=0;i<x.size();++i) {
+        x[i]=0.25f*std::sin(float(i)*float(2.0*3.141592653589793*75.0/48000.0));
+        y[i]=x[i];
+    }
+    core.process(x.data(),y.data(),a.data(),b.data(),x.size());
+    for(std::size_t i=128;i<x.size();++i) {
+        verify(std::isfinite(a[i]) && std::isfinite(b[i]));
+        verify(a[i]==b[i]);
+        dryEnergy+=double(x[i])*x[i];
+        wetEnergy+=double(a[i])*a[i];
+    }
+    verify(wetEnergy>dryEnergy);
     std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch and tight)\n";
 }

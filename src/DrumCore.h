@@ -30,6 +30,8 @@ public:
         fastA_ = pole(0.002);
         slowA_ = pole(0.055);
         constexpr double twoPi=6.283185307179586;
+        kickHighA_ = pole(1.0/(twoPi*135.0));
+        kickLowA_ = pole(1.0/(twoPi*42.0));
         bodyHighA_ = pole(1.0/(twoPi*350.0));
         bodyLowA_ = pole(1.0/(twoPi*110.0));
         glueDetectorAttackA_ = pole(0.012);
@@ -142,6 +144,8 @@ public:
             const double tightGain = 1.0-(t*characterTight*0.30)*linkedTail;
             for (int ch=0;ch<2;++ch) {
                 Channel& s = channels_[ch];
+                s.kickHigh=kickHighA_*s.kickHigh+(1.0-kickHighA_)*x[ch];
+                s.kickLow=kickLowA_*s.kickLow+(1.0-kickLowA_)*x[ch];
                 s.bodyHigh=bodyHighA_*s.bodyHigh+(1.0-bodyHighA_)*x[ch];
                 s.bodyLow=bodyLowA_*s.bodyLow+(1.0-bodyLowA_)*x[ch];
                 // PUNCH is stereo linked: both channels receive the same
@@ -149,6 +153,9 @@ public:
                 double y=x[ch]*(1.0+0.80*punchDrive);
                 // BODY is a separate 110-350 Hz low-mid sustain region;
                 // difference of two stable one-pole lowpasses, not sub boost.
+                // Low-frequency kick body: difference of two DC-blocking
+                // lowpasses. No uncontrolled sub-bass or permanent shelf.
+                const double kickBand=s.kickHigh-s.kickLow;
                 const double bodyBand=s.bodyHigh-s.bodyLow;
                 const double sustainWeight=std::clamp(
                     s.sustain/(s.attack+0.02),0.0,1.0);
@@ -163,7 +170,7 @@ public:
                 const double harmonicResidual=bodyBand-
                     std::tanh(massDrive*bodyBand)/massDrive;
                 y+=massAmount*sustainWeight*
-                    (0.42*bodyBand+0.28*harmonicResidual);
+                    (0.28*kickBand+0.38*bodyBand+0.28*harmonicResidual);
                 // Tail moderation is signal-following and not a hard gate.
                 y *= tightGain;
                 // The FINISH detector processes both pre-output channels together.
@@ -194,6 +201,8 @@ private:
     struct Channel {
         double attack=0.0;
         double sustain=0.0;
+        double kickHigh=0.0;
+        double kickLow=0.0;
         double bodyHigh=0.0;
         double bodyLow=0.0;
     };
@@ -205,6 +214,7 @@ private:
     }
     double fs_=48000.0;
     double fastA_=0.99, slowA_=0.999;
+    double kickHighA_=0.98, kickLowA_=0.99;
     double bodyHighA_=0.98, bodyLowA_=0.99;
     double glueDetectorAttackA_=0.99,glueDetectorReleaseA_=0.99;
     double glueRmsA_=0.999,glueGainAttackA_=0.99,glueGainReleaseA_=0.999;
