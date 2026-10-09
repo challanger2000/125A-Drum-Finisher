@@ -22,7 +22,7 @@ int main(int argc,char** argv){
     a125::drum::Core core;core.prepare(sampleRate);
     a125::drum::Controls c;
     if(module=="PUNCH")c.punch=amount;
-    else if(module=="BODY")c.body=amount;
+    else if(module=="BODY"||module=="MASS")c.body=amount;
     else if(module=="TIGHT")c.tight=amount;
     else if(module=="FINISH")c.finish=amount;
     else if(module=="GLUE")c.glue=amount;

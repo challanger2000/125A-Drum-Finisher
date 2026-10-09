@@ -34,7 +34,7 @@ for label,filename in SOURCES.items():
   source=ROOT/filename;source.write_bytes(data)
   raw=ROOT/(label+".f32");sr,ch,frames,inp=wav_to_stereo(source,raw)
   if len(inp)<sr*50:print("NOTE: shorter than 50 sec",label,frames/sr)
-  for module in ("NEUTRAL","PUNCH","BODY","TIGHT","FINISH","GLUE"):
+  for module in ("NEUTRAL","PUNCH","MASS","TIGHT","FINISH","GLUE"):
    out=ROOT/(label+"_"+module+".f32")
    subprocess.run([sys.argv[1],str(raw),str(out),str(sr),module,"0" if module=="NEUTRAL" else "0.5"],check=True)
    audio=asfloat(out)
@@ -45,6 +45,26 @@ for label,filename in SOURCES.items():
                        source_channels=ch,source_sha256=hashlib.sha256(data).hexdigest(),
                        rms_delta_db=round(delta,4),relative_residual=round(residue,5)))
    out.unlink()
+  # User-facing utility tests: level-matched contrast at practical settings.
+  # Peak changes are not automatically improvements; compare across programmes.
+  for module in ("MASS","GLUE"):
+   for amount in (0.25,0.5,1.0):
+    out=ROOT/(label+"_"+module+"_"+str(amount)+".f32")
+    subprocess.run([sys.argv[1],str(raw),str(out),str(sr),module,str(amount)],check=True)
+    wet=asfloat(out)
+    dryRms=rms(inp);wetRms=rms(wet)
+    gain=dryRms/max(1e-12,wetRms)
+    peakDry=max(abs(x) for x in inp)
+    peakMatched=max(abs(x)*gain for x in wet)
+    delta=db(peakMatched)-db(peakDry)
+    if not math.isfinite(delta):raise ValueError("nonfinite level-matched peak")
+    results.append(dict(genre=label,module=module+"_"+str(amount),
+                        seconds=round(frames/sr,3),source_channels=ch,
+                        source_sha256=hashlib.sha256(data).hexdigest(),
+                        rms_delta_db=round(db(wetRms)-db(dryRms),4),
+                        relative_residual=round(delta,5)))
+    print("LEVEL_MATCHED",label,module,amount,"crest_delta_db",round(delta,4),flush=True)
+    out.unlink()
   # Multiple resonant drum-ring frequencies, identical real programme.
   # Render baseline only once; no artificial threshold-based pass claims.
   if label=="SpeedMetal":
@@ -124,4 +144,4 @@ with (ROOT/"metrics.csv").open("w",newline="") as f:
  writer.writeheader();writer.writerows(results)
 (ROOT/"summary.json").write_text(json.dumps({"results":len(results),"failure":failures,"fixtures":list(SOURCES),"license":"CC BY-NC-SA 4.0; internal/non-commercial testing only","note":"MDBDrums sources are mono; duplicated to dual-channel for core render. Not evidence of stereo image preservation."},indent=2))
 print("MEASUREMENTS",len(results),"FAILURES",len(failures),flush=True)
-if failures or len(results)!=len(SOURCES)*6:sys.exit(1)
+if failures or len(results)!=len(SOURCES)*12:sys.exit(1)
