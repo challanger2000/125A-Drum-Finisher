@@ -29,20 +29,40 @@ def transient(x,fs):
 def autocorr_short(x):
  a=x[::8]
  return sum(a[i]*a[i-1] for i in range(1,len(a)))/max(1e-12,sum(v*v for v in a))
-def bandenergy(x,fs,lo,hi):
- # Welch-like FFT-free discrete frequency projection, diagnostic only;
- # use 1 second with 10ms nonoverlap and Goertzel at fixed frequencies.
- n=min(len(x),fs)
- freqs=[f for f in (55,100,160,300,700,1500,3200,6500,10000) if lo<=f<hi and f<fs*.45]
- power=0.
- for f in freqs:
-  stride=2*math.pi*f/fs
-  re=im=0.
-  for i in range(0,n,4):
-   angle=stride*i
-   re+=x[i]*math.cos(angle);im+=x[i]*math.sin(angle)
-  power+=re*re+im*im
- return power
+def fft_power_bands(x,fs):
+ # Hann-windowed radix-2 FFT with Parseval-consistent relative band powers.
+ # Unlike sparse sinusoid projections, this integrates every spectral bin.
+ n=4096
+ if len(x)<n:return {key:0.0 for key in ("35_200","200_1200","1200_5000","5000_14000")}
+ window=[.5-.5*math.cos(2*math.pi*i/(n-1)) for i in range(n)]
+ bands=((35,200),(200,1200),(1200,5000),(5000,14000))
+ sums={f"{lo}_{hi}":0.0 for lo,hi in bands}
+ # Use four nonoverlapping windows spread across the first four seconds.
+ for start in [int((len(x)-n)*k/4) for k in range(4)]:
+  z=[complex(x[start+i]*window[i],0.) for i in range(n)]
+  j=0
+  for i in range(1,n):
+   bit=n>>1
+   while j&bit:
+    j^=bit;bit>>=1
+   j^=bit
+   if i<j:z[i],z[j]=z[j],z[i]
+  length=2
+  while length<=n:
+   phase=-2*math.pi/length
+   tw=complex(math.cos(phase),math.sin(phase))
+   for a in range(0,n,length):
+    w=1+0j
+    for k in range(length//2):
+     u=z[a+k];v=z[a+k+length//2]*w
+     z[a+k]=u+v;z[a+k+length//2]=u-v
+     w*=tw
+   length*=2
+  for k in range(1,n//2):
+   hz=k*fs/n
+   for lo,hi in bands:
+    if lo<=hz<hi:sums[f"{lo}_{hi}"]+=z[k].real*z[k].real+z[k].imag*z[k].imag
+ return sums
 rows=[]
 for label,filename in files.items():
  fs,dry=readwav(root/filename);drym=mono(dry)
@@ -60,9 +80,10 @@ for label,filename in files.items():
    rmsenv=math.sqrt(sum(d*d for d in entdiff)/max(1,len(entdiff)))
    peaks=[abs(v) for v in wet]
    bands={}
-   for lo,hi in ((35,200),(200,1200),(1200,5000),(5000,14000)):
-    pre=bandenergy(drym,fs,lo,hi);post=bandenergy(wetm,fs,lo,hi)
-    bands["band_%d_%d_db"%(lo,hi)]=round(10*math.log10(max(post,1e-20)/max(pre,1e-20)),3)
+   pre_bands=fft_power_bands(drym,fs)
+   post_bands=fft_power_bands(wetm,fs)
+   for key in pre_bands:
+    bands["band_"+key+"_db"]=round(10*math.log10(max(post_bands[key],1e-20)/max(pre_bands[key],1e-20)),3)
    rows.append(dict(source=label,module=module,amount=amount,
      rms_change_db=round(db(rms(wet))-db(rms(dry)),3),
      level_matched_crest_delta_db=round(crest(wetm)-crest(drym),3),
@@ -76,7 +97,7 @@ for label,filename in files.items():
 with (root/"expanded_metrics.csv").open("w",newline="") as f:
  w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
 (root/"expanded_qa_coverage.json").write_text(json.dumps({
- "metrics":"RMS; RMS-matched crest; 10ms envelope displacement; transient peak ratio; lag-1 correlation; sparse tonal-band projection; clipping",
- "test_count":len(rows),"not_covered":"LUFS/true peak; full FFT frequency response; phase/group delay; THD/IMD/aliasing; true stereo imaging; perceptual listening; realtime CPU; sample-rate sweep",
- "qualification":"Tonally sparse band projection is NOT a broadband spectral measurement. Mono source duplicated into stereo. These are diagnostics, not sonic PASS criteria."},indent=2))
+ "metrics":"RMS; RMS-matched crest; 10ms envelope displacement; transient peak ratio; lag-1 correlation; Hann-windowed broadband FFT band integration; clipping",
+ "test_count":len(rows),"not_covered":"LUFS/true peak; phase/group delay; THD/IMD/aliasing; true stereo imaging; perceptual listening; realtime CPU; sample-rate sweep",
+ "qualification":"FFT band analysis integrates the full defined band; frequency resolution varies with sample rate. Mono source duplicated into stereo. These are diagnostics, not sonic PASS criteria."},indent=2))
 print("EXPANDED_METRICS",len(rows),"COMPLETE",flush=True)
