@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [v1.0.0-engineering]
-    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp', 'tests/expanded_module_qa.py', 'tests/dsp_function_diagnostics.py', 'tests/focused_mass_glue_qa.py']
+    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp', 'tests/expanded_module_qa.py', 'tests/dsp_function_diagnostics.py', 'tests/focused_mass_glue_qa.py', 'src/DrumCore.h', 'src/dsp/**']
 jobs:
   audio-qa:
     runs-on: ubuntu-24.04
