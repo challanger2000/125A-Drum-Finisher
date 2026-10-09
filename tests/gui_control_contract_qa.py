@@ -44,7 +44,11 @@ for view in buttons:
 assert "control->setListener(editor);" in source
 assert "tag==kCharacter||tag==kBypass" in source
 assert "control->setListener(this);" in source  # Zoom only
-assert "if(tag==kCharacter||tag==kBypass){" not in source
+# The branch deliberately uses "else if(...)" inside verifyView: it must
+# attach the VST3Editor listener, not manually call the host edit methods.
+assert source.count("}else if(tag==kCharacter||tag==kBypass){") == 1
+assert "control->setListener(editor);" in source
+assert "beginEdit(id);" not in source
 assert "beginEdit(id);" not in source
 assert "ParameterInfo::kIsBypass" in source
 assert "bypassParameter->appendString(STR16(\"ON\"));" in source
