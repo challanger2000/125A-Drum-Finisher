@@ -148,24 +148,24 @@ int main(){
             std::cout<<"TIGHT amount="<<amount<<" early_dB="<<earlyDb
                      <<" late_dB="<<lateDb
                      <<" tail_vs_attack_dB="<<tailRelativeDb<<"\\n";
-            if(amount==0.0f)
+            if(amount==0.0f) {
                 check(processedL==input && processedR==right,
                       "TIGHT at zero must remain bit-exact");
-            if(amount==0.25f)
-                check(tailRelativeDb < -0.4,
-                      "TIGHT 25% must audibly reduce the decay relative to attack");
-            if(amount==1.0f) {
-                check(earlyDb > -0.35,
-                      "TIGHT 100% must preserve onset energy in first 25 ms");
-                check(tailRelativeDb < -2.5,
-                      "TIGHT 100% must substantially shorten late decay");
-            }
-            else {
+            } else {
                 check(lateDb<0.0,"TIGHT must attenuate late decay");
                 check(tailRelativeDb<0.0,
                       "TIGHT must reduce tail relative to attack");
                 check(tailRelativeDb<=previousTail+0.05,
                       "TIGHT relative tail control must increase monotonically");
+                if(amount==0.25f)
+                    check(tailRelativeDb < -0.4,
+                          "TIGHT 25% must reduce decay relative to attack");
+                if(amount==1.0f) {
+                    check(earlyDb > -0.35,
+                          "TIGHT 100% must preserve onset energy in first 25 ms");
+                    check(tailRelativeDb < -2.5,
+                          "TIGHT 100% must substantially shorten late decay");
+                }
             }
             previousTail=tailRelativeDb;
         }
