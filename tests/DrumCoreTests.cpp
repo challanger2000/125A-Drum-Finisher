@@ -33,5 +33,17 @@ int main() {
     core.reset();
     core.process(x.data(),y.data(),a.data(),b.data(),x.size());
     verify(reference==a); // reset deterministic
-    std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism)\n";
+    // PUNCH must preserve interchannel balance with asymmetric stereo input.
+    Controls punchOnly; punchOnly.punch=1.0f;
+    core.setControls(punchOnly); core.reset();
+    for (std::size_t i=0;i<x.size();++i) y[i]=0.35f*x[i];
+    core.process(x.data(),y.data(),a.data(),b.data(),x.size());
+    bool punchActive=false;
+    for (std::size_t i=0;i<x.size();++i) {
+        verify(std::isfinite(a[i]) && std::isfinite(b[i]));
+        verify(std::abs(b[i]-0.35f*a[i])<0.000002f);
+        if (std::abs(a[i]-x[i])>0.000001f) punchActive=true;
+    }
+    verify(punchActive);
+    std::cout<<"Drum core contract: PASS (neutral/finite/symmetry/determinism/stereo-linked punch)\n";
 }

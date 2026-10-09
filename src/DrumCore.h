@@ -121,18 +121,25 @@ public:
             autoGain_=gainA*autoGain_+(1.0-gainA)*glueTargetGain_;
             // Restrained parallel dynamics preserves more of the dry attack.
             const float attenuation=static_cast<float>(1.0-0.80*g*(1.0-autoGain_));
-            for (int ch=0;ch<2;++ch) {
+            // Update both channel envelopes before deriving the punch gain.
+            // A stereo bus must not shift its pan because one side has a louder attack.
+            double linkedTransient = 0.0;
+            for (int ch=0; ch<2; ++ch) {
                 Channel& s = channels_[ch];
                 const float absx = static_cast<float>(std::abs(x[ch]));
                 s.attack = fastA_*s.attack+(1.0-fastA_)*absx;
                 s.sustain = slowA_*s.sustain+(1.0-slowA_)*absx;
+                linkedTransient = std::max(linkedTransient,
+                    std::max(0.0, s.attack-s.sustain));
+            }
+            const float punchDrive = p*characterPunch*
+                static_cast<float>(linkedTransient/(0.12+linkedTransient));
+            for (int ch=0;ch<2;++ch) {
+                Channel& s = channels_[ch];
                 s.bodyHigh=bodyHighA_*s.bodyHigh+(1.0-bodyHighA_)*x[ch];
                 s.bodyLow=bodyLowA_*s.bodyLow+(1.0-bodyLowA_)*x[ch];
-                const float transient = std::max(0.0f, static_cast<float>(s.attack-s.sustain));
-                // PUNCH raises the transient independently of low-frequency
-                // energy: snare and kick attacks respond without a bass shelf.
-                const float punchDrive=p*characterPunch*
-                    transient/(0.12f+transient);
+                // PUNCH is stereo linked: both channels receive the same
+                // transient gain, preserving the existing interchannel ratio.
                 double y=x[ch]*(1.0+0.80*punchDrive);
                 // BODY is a separate 110-350 Hz low-mid sustain region;
                 // difference of two stable one-pole lowpasses, not sub boost.
