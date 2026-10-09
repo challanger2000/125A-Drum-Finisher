@@ -1,4 +1,5 @@
 name: Drum Stem Offline Audio QA
+# Compare GLUE threshold calibration against latest 48-metric real-stem baseline.
 # A/B baseline after MASS and parallel GLUE change; noncommercial internal fixtures.
 # Controlled comparison trial: FINISH onset guard 18ms -> 28ms; keep previous baseline.
 # Revalidation on 6dbab03: current onset-gated FINISH DSP; retain reports for A/B.
