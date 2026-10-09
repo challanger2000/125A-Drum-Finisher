@@ -139,7 +139,7 @@ public:
             for (int ch=0; ch<2; ++ch) {
                 const Channel& s = channels_[ch];
                 linkedTail = std::max(linkedTail,
-                    std::clamp(s.sustain/(s.attack+0.01),0.0,1.0));
+                    std::clamp((s.sustain-s.attack)/(s.sustain+s.attack+1.0e-12),0.0,1.0));
             }
             // Use a defined decibel attenuation law rather than the previous
             // arbitrary linear 30% ceiling (~3.1 dB). At full TIGHT the
