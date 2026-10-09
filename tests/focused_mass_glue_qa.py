@@ -66,6 +66,28 @@ for module in ("MASS","GLUE"):
                     result["gain_%dms_db"%ms]=round(db(window_rms(wl,ms)/window_rms(left,ms)),5)
                 result["crest_change_db"]=round(db(max(abs(v) for v in wl)/out_rms)-db(max(abs(v) for v in left)/dry_rms),5)
             rows.append(result)
+# Regression gates derive from invariances of the implemented DSP contract.
+# 0% must be neutral; equivalent signals at different gain staging must
+# produce equal relative GLUE action, with a 0.01 dB numeric tolerance.
+for row in rows:
+    if row["amount"]==0.0 and abs(row["rms_change_db"])>0.0001:
+        raise AssertionError("0 percent is not neutral: "+str(row))
+for amount in (.25,.5,.75,1.):
+    subset=[r for r in rows if r["module"]=="GLUE" and r["amount"]==amount]
+    for metric in ("rms_change_db","gain_12ms_db","gain_50ms_db",
+                   "gain_200ms_db","gain_350ms_db","crest_change_db"):
+        values=[r[metric] for r in subset]
+        if max(values)-min(values)>0.01:
+            raise AssertionError("GLUE input-level dependence: "+str((amount,metric,values)))
+# Asymmetric stereo input with identical waveform shape: stereo-linked GLUE
+# should apply the same evolving gain curve to both channels.
+for amount in (.25,1.):
+    wl,wr=render(pulse,[.35*v for v in pulse],"GLUE",amount,
+                 "stereo_link_%d"%int(amount*100))
+    residual=max(abs(float(a)*.35-float(b)) for a,b in zip(wl,wr))
+    if residual>2e-6:
+        raise AssertionError("GLUE stereo-link gain mismatch: "+str((amount,residual)))
+print("GLUE_GAIN_INVARIANCE_AND_STEREO_LINK PASS",flush=True)
 keys=list(dict.fromkeys(k for row in rows for k in row))
 with (ROOT/"focused_mass_glue_level_matrix.csv").open("w",newline="") as f:
     writer=csv.DictWriter(f,fieldnames=keys);writer.writeheader();writer.writerows(rows)
