@@ -40,7 +40,7 @@
     <view class="CParamDisplay" origin="810,336" size="125,24" control-tag="Glue" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CParamDisplay" origin="995,336" size="125,24" control-tag="Output" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CTextLabel" origin="425,393" size="350,24" title="CHARACTER" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="445,510" size="310,18" title="125A SYSTEMS  •  V1.0.0 TEST" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="445,510" size="310,18" title="125A SYSTEMS  •  V1.0.0" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
     <view class="CSegmentButton" origin="999,440" size="165,36" control-tag="Bypass" default-value="0" style="horizontal" segment-names="ON,BYPASS" font="Label" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
     <view class="CSegmentButton" origin="415,428" size="370,34" control-tag="Character" default-value="0.5" style="horizontal" segment-names="TIGHT,PUNCH,DENSE" font="Label" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
     <view class="CControl" custom-view-name="DrumKnobPunch" origin="70,196" size="125,125" control-tag="Punch"/>

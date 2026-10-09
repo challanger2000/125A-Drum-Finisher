@@ -1,5 +1,5 @@
 name: Drum Finisher Full Release QA
-# Integrated Windows release gate for level-relative PUNCH/MASS and hit-contour TIGHT (2026-10-09).
+# Integrated Windows release gate: CHARACTER/BYPASS native host-linked segment buttons (2026-10-10).
 # Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
 # Previous full release validation predates the current DSP; no inherited PASS is accepted.
 

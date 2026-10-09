@@ -56,4 +56,4 @@ assert "bypassParameter->appendString(STR16(\"BYPASS\"));" in source
 assert 'enum Param : ParamID { kPunch=100, kBody=101, kTight=102, kFinish=103,' in source
 assert 'kGlue=104, kOutput=105, kCharacter=106, kBypass=107' in source
 assert "static constexpr int32 stateVersion=1" in source
-print("PASS: nine resolved GUI tags; all three clickable segment controls; native VST3 parameter binding; state IDs preserved")
+print("PASS: nine resolved GUI tags; three segment controls declared; native VST3 parameter listener wiring; state IDs preserved (physical mouse interaction requires host test)")
