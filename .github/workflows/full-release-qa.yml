@@ -1,7 +1,7 @@
 name: Drum Finisher Full Release QA
-# Final integrated QA revalidation after stereo, automation and MASS updates (2026-10-09).
-# Revalidation on 6dbab03: current onset-gated FINISH DSP; retain reports for A/B.
-# Retest current lifecycle fix 7eeb9337 after the first 125A QA 31/0/4 failure.
+# Integrated Windows release gate for level-relative PUNCH/MASS and hit-contour TIGHT (2026-10-09).
+# Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
+# Previous full release validation predates the current DSP; no inherited PASS is accepted.
 
 on:
   workflow_dispatch:
@@ -41,6 +41,21 @@ jobs:
           if (-not $plugin) { throw "125A_Drum_Finisher.vst3 bundle not found" }
           "plugin=$($plugin.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host "Testing exact bundle: $($plugin.FullName)"
+
+      - name: Validate exact VST3 with Steinberg normal and local-instance modes
+        shell: pwsh
+        run: |
+          $validator = Get-ChildItem -Path build -Recurse -File -Filter "validator.exe" | Where-Object { $_.FullName -match "[\\/]Release[\\/]" } | Select-Object -First 1
+          if (-not $validator) { $validator = Get-ChildItem -Path build -Recurse -File -Filter "validator.exe" | Select-Object -First 1 }
+          $plugin = Get-ChildItem -Path build -Recurse -Directory -Filter "125A_Drum_Finisher.vst3" | Select-Object -First 1
+          if (-not $plugin) { throw "Exact Drum Finisher VST3 bundle not found" }
+          if (-not $validator) { throw "Steinberg validator.exe was not built" }
+          Write-Host "Steinberg Validator: $($validator.FullName)"
+          Write-Host "Exact VST3: $($plugin.FullName)"
+          & $validator.FullName $plugin.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg standard Validator FAILED: $LASTEXITCODE" }
+          & $validator.FullName -l $plugin.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg local-instance Validator FAILED: $LASTEXITCODE" }
 
       - name: Checkout 125A Plugin Tester v0.2.9 source
         uses: actions/checkout@v4
