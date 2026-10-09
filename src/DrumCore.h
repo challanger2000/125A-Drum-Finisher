@@ -101,9 +101,9 @@ public:
                 glueDirty_=false;
                 glueTargetGain_=1.0;
                 if(g>0.0f){
-                    const double threshold=std::clamp(
-                        1.35*std::sqrt(std::max(0.0,glueRmsEnergy_)),
-                        0.025,0.25);
+                    // Relative threshold: absolute clamps caused gain-stage dependence.
+                    const double threshold=std::max(
+                        1.0e-12,1.35*std::sqrt(std::max(0.0,glueRmsEnergy_)));
                     const double overDb=20.0*std::log10(
                         std::max(1.0e-12,glueEnv_)/threshold);
                     constexpr double halfKnee=3.0;

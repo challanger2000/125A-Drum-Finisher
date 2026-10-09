@@ -91,6 +91,13 @@ for label,filename in SOURCES.items():
        crest_delta_db=round(db(peak_after)-db(output_rms)-
                             (db(peak_before)-db(input_rms)),4)))
     test_in.unlink();test_out.unlink()
+  glue_checks=[c for c in level_checks if c["module"]=="GLUE"]
+  if len(glue_checks)<3:raise ValueError("insufficient headroom for GLUE level-sweep QA")
+  spread=max(c["output_rms_delta_db"] for c in glue_checks)-min(c["output_rms_delta_db"] for c in glue_checks)
+  crest_spread=max(c["crest_delta_db"] for c in glue_checks)-min(c["crest_delta_db"] for c in glue_checks)
+  print("GLUE_LEVEL_INVARIANCE",label,"rms_spread_db",round(spread,4),"crest_spread_db",round(crest_spread,4),flush=True)
+  if spread>0.12 or crest_spread>0.12:
+   raise ValueError("GLUE level invariance failed: rms %.3f dB crest %.3f dB"%(spread,crest_spread))
   (ROOT/(label+"_input_level.json")).write_text(json.dumps(level_checks,indent=2))
   for check in level_checks:
    print("LEVEL_SWEEP",label,check["module"],check["input_offset_db"],
