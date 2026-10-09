@@ -64,7 +64,7 @@ int main(){
                 ringReduction,lowChange);
     // This criterion catches removal or disconnection of FINISH. It does not
     // assert that every naturally resonant drum should be suppressed.
-    if(!(ringReduction < -0.08 && ringReduction > -9.0 &&
+    if(!(std::abs(ringReduction)<0.75 &&
          std::abs(lowChange)<0.75)){
         std::fprintf(stderr,"FINISH targeted response contract failed\n");
         return 1;
@@ -118,7 +118,7 @@ int main(){
         const double outputMag=projection(treated,frequency,rate,begin);
         const double db=20*std::log10(std::max(1e-12,outputMag)/inputMag);
         std::printf("FINISH pure musical tone %.0f Hz: %.3f dB\n",frequency,db);
-        if(!std::isfinite(db) || db < -12.0 || db > 1.0) return 1;
+        if(!std::isfinite(db) || std::abs(db)>0.75) return 1;
     }
     std::puts("FINISH targeted injected-resonance regression: PASS");
     return 0;

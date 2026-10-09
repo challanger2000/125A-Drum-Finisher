@@ -47,6 +47,15 @@ private:
     double reductionRelease_ {0.0};
 
     std::size_t updateCounter_ {0};
+    double transientFast_ {0.0};
+    double transientSlow_ {0.0};
+    double transientFastA_ {0.0};
+    double transientSlowA_ {0.0};
+    std::size_t samplesSinceOnset_ {0};
+    std::size_t lastOnset_ {0};
+    std::size_t onsetHoldSamples_ {0};
+    std::size_t transientDelaySamples_ {0};
+    std::size_t refractorySamples_ {0};
 };
 
 } // namespace a125::drum::dsp

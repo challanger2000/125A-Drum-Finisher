@@ -100,6 +100,11 @@ void AdaptiveResonanceSuppressor::prepare(
             sampleRate_,
             260.0);
 
+    transientFastA_=timeCoefficient(sampleRate_,2.0);
+    transientSlowA_=timeCoefficient(sampleRate_,100.0);
+    transientDelaySamples_=static_cast<std::size_t>(sampleRate_*0.018);
+    onsetHoldSamples_=static_cast<std::size_t>(sampleRate_*0.36);
+    refractorySamples_=static_cast<std::size_t>(sampleRate_*0.07);
     reset();
 }
 
@@ -119,6 +124,9 @@ void AdaptiveResonanceSuppressor::reset() noexcept {
 
     wideEnergy_ = 0.0;
     updateCounter_ = 0;
+    transientFast_=transientSlow_=0.0;
+    samplesSinceOnset_=onsetHoldSamples_+1;
+    lastOnset_=refractorySamples_+1;
 }
 
 void AdaptiveResonanceSuppressor::updateTargets() noexcept {
@@ -301,6 +309,21 @@ void AdaptiveResonanceSuppressor::processFrame(
                 target;
     }
 
+    // An onset-gated, decaying ring is a candidate for suppression.
+    // A stationary musical note receives no permanent tonal cut.
+    const double peak=std::max(std::abs(left),std::abs(right));
+    transientFast_=transientFastA_*transientFast_+
+        (1.0-transientFastA_)*peak;
+    transientSlow_=transientSlowA_*transientSlow_+
+        (1.0-transientSlowA_)*peak;
+    if(lastOnset_<refractorySamples_+1)++lastOnset_;
+    if(samplesSinceOnset_<onsetHoldSamples_+1)++samplesSinceOnset_;
+    if(transientFast_>0.025 &&
+       transientFast_>2.3*(transientSlow_+0.001) &&
+       lastOnset_>refractorySamples_){
+        samplesSinceOnset_=0;
+        lastOnset_=0;
+    }
     const double wideTarget =
         safeSquare(
             std::max(
@@ -352,8 +375,12 @@ void AdaptiveResonanceSuppressor::processFrame(
     }
 
     const double strength=std::clamp(std::isfinite(amount)?amount:0.0,0.0,1.0);
-    left -= strength*correctionLeft;
-    right -= strength*correctionRight;
+    // Protect initial attack (~18 ms), then allow the resonance tail
+    // to be corrected; fall to zero after 360 ms without a new onset.
+    const double gate=samplesSinceOnset_>transientDelaySamples_ &&
+        samplesSinceOnset_<onsetHoldSamples_ ? 1.0 : 0.0;
+    left -= strength*gate*correctionLeft;
+    right -= strength*gate*correctionRight;
 }
 
 double
