@@ -103,6 +103,37 @@ for label,filename in SOURCES.items():
    print("LEVEL_SWEEP",label,check["module"],check["input_offset_db"],
          "gain_db",check["output_rms_delta_db"],
          "crest_db",check["crest_delta_db"],flush=True)
+  # Listening QA, not a numerical PASS assertion: same excerpt, RMS matched,
+  # 16-bit stereo PCM. Only emit from internal/noncommercial licensed fixtures.
+  if label in ("SpeedMetal","Country"):
+   excerpt_frames=min(frames,int(sr*24))
+   excerpt=array.array("f",inp[:2*excerpt_frames])
+   excerpt_path=ROOT/"ab_excerpt.f32";excerpt_path.write_bytes(excerpt.tobytes())
+   reference_rms=rms(excerpt)
+   # Fixed shared attenuation maintains headroom and keeps fair loudness comparison.
+   def save_listening_wav(dest,samples):
+    with wave.open(str(dest),"wb") as ww:
+     ww.setnchannels(2);ww.setsampwidth(2);ww.setframerate(sr)
+     pcm=array.array('h',(int(max(-32768,min(32767,round(v*32767)))) for v in samples))
+     if sys.byteorder!="little":pcm.byteswap()
+     ww.writeframes(pcm.tobytes())
+   files=[("DRY",excerpt)]
+   for module in ("MASS","GLUE"):
+    for amount in (0.5,1.0):
+     rendered=ROOT/"ab_wet.f32"
+     subprocess.run([sys.argv[1],str(excerpt_path),str(rendered),str(sr),module,str(amount)],check=True)
+     wet=asfloat(rendered)
+     gain=reference_rms/max(rms(wet),1e-12)
+     files.append((module+"_"+str(amount),array.array("f",(v*gain for v in wet))))
+     rendered.unlink()
+   max_peak=max(max(abs(v) for v in audio) for _,audio in files)
+   common_attenuation=min(1.0,0.89/max(max_peak,1e-12))
+   for suffix,audio in files:
+    save_listening_wav(ROOT/(label+"_AB_"+suffix+".wav"),
+        (v*common_attenuation for v in audio))
+   print("AB_RENDER",label,"files",len(files),"seconds",excerpt_frames/sr,
+         "common_attenuation",round(common_attenuation,6),flush=True)
+   excerpt_path.unlink()
   # Multiple resonant drum-ring frequencies, identical real programme.
   # Render baseline only once; no artificial threshold-based pass claims.
   if label=="SpeedMetal":
