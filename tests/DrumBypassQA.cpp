@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 int main() {
     a125::drum::BypassRamp ramp;
     ramp.reset(false);
@@ -25,6 +26,13 @@ int main() {
     double right=(1.0-mix)*0.1+mix*0.2;
     if(std::abs(left-0.3046875)>1e-12||std::abs(right-0.1015625)>1e-12)
         return EXIT_FAILURE;
-    std::cout<<"Bypass 64-sample monotonicity/reversal/stereo: PASS\n";
+    // Host-supplied nonfinite samples must not reach the output via dry bypass.
+    if(a125::drum::finiteHostSample(std::numeric_limits<float>::quiet_NaN())!=0.0f)
+        return EXIT_FAILURE;
+    if(a125::drum::finiteHostSample(std::numeric_limits<double>::infinity())!=0.0)
+        return EXIT_FAILURE;
+    if(a125::drum::finiteHostSample(-0.25f)!=-0.25f)
+        return EXIT_FAILURE;
+    std::cout<<"Bypass ramp/stereo/nonfinite host sanitization: PASS\n";
     return EXIT_SUCCESS;
 }

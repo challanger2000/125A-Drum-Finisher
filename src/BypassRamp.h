@@ -2,6 +2,12 @@
 #include <algorithm>
 #include <cmath>
 namespace a125::drum {
+// Preserve valid host samples; prevent NaN/Inf leaking through dry bypass.
+template<class Sample>
+inline Sample finiteHostSample(Sample value) noexcept {
+    return std::isfinite(value) ? value : Sample(0);
+}
+
 // A bounded linear bypass ramp: target 1 = dry, target 0 = processed.
 // The DSP must run continuously regardless of this ramp.
 class BypassRamp {
