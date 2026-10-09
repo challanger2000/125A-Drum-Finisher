@@ -151,6 +151,15 @@ int main(){
             if(amount==0.0f)
                 check(processedL==input && processedR==right,
                       "TIGHT at zero must remain bit-exact");
+            if(amount==0.25f)
+                check(tailRelativeDb < -0.4,
+                      "TIGHT 25% must audibly reduce the decay relative to attack");
+            if(amount==1.0f) {
+                check(earlyDb > -0.35,
+                      "TIGHT 100% must preserve onset energy in first 25 ms");
+                check(tailRelativeDb < -2.5,
+                      "TIGHT 100% must substantially shorten late decay");
+            }
             else {
                 check(lateDb<0.0,"TIGHT must attenuate late decay");
                 check(tailRelativeDb<0.0,

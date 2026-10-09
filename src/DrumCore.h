@@ -39,13 +39,24 @@ public:
         glueRmsA_ = pole(0.350);
         glueGainAttackA_ = pole(0.025);
         glueGainReleaseA_ = pole(0.240);
+        // TIGHT is triggered by a linked transient, then follows a bounded
+        // exponential attenuation contour. All times are sample-rate derived.
+        tightDecayA_ = pole(0.060);
+        tightGainRecoverA_ = pole(0.0005);
+        tightGainReduceA_ = pole(0.008);
+        tightHoldSamples_ = static_cast<std::size_t>(0.015 * fs_);
+        tightRefractorySamples_ = static_cast<std::size_t>(0.040 * fs_);
+        tightMaximumAgeSamples_ = static_cast<std::size_t>(fs_);
         resonance_.prepare(fs_);
         reset();
     }
     void reset() noexcept {
         for (auto& c : channels_) c = Channel{};
         glueEnv_ = 0.0;
-        tightEnvelope_ = 0.0;
+        tightContour_ = 0.0;
+        tightGainSmoothed_ = 1.0;
+        tightSinceOnset_ = 0;
+        tightAboveThreshold_ = false;
         autoGain_ = 1.0;
         glueTargetGain_=1.0;
         glueRmsEnergy_=0.0;
@@ -94,7 +105,6 @@ public:
             glueEnv_=detectorA*glueEnv_+(1.0-detectorA)*peak;
             glueRmsEnergy_=glueRmsA_*glueRmsEnergy_+
                 (1.0-glueRmsA_)*static_cast<double>(peak)*peak;
-            tightEnvelope_=slowA_*tightEnvelope_+(1.0-slowA_)*peak;
             if(++glueTick_>=16||glueDirty_){
                 glueTick_=0;
                 glueDirty_=false;
@@ -135,20 +145,32 @@ public:
             // the same attack boost at different input gain settings.
             const float punchDrive = p*characterPunch*
                 static_cast<float>(linkedTransient);
-            // TIGHT also uses a common stereo-linked envelope so one channel's
-            // longer decay cannot cause image movement or channel imbalance.
-            double linkedTail = 0.0;
-            for (int ch=0; ch<2; ++ch) {
-                const Channel& s = channels_[ch];
-                linkedTail = std::max(linkedTail,
-                    std::clamp((s.sustain-s.attack)/(s.sustain+s.attack+1.0e-12),0.0,1.0));
+            // TIGHT: transient-triggered stereo-linked decay control.
+            // Hold the first 15 ms of the hit, then approach bounded
+            // reduction exponentially (60 ms contour). Fast 0.5-ms recovery
+            // on each new attack avoids an abrupt gain step; 8-ms smoothing
+            // on attenuation prevents zipper/click artefacts.
+            const bool tightAbove = linkedTransient > 0.45;
+            if (tightAbove && !tightAboveThreshold_ &&
+                tightSinceOnset_ >= tightRefractorySamples_) {
+                tightSinceOnset_ = 0;
+                tightContour_ = 0.0;
+            } else if (tightSinceOnset_ < tightMaximumAgeSamples_) {
+                ++tightSinceOnset_;
             }
-            // Use a defined decibel attenuation law rather than the previous
-            // arbitrary linear 30% ceiling (~3.1 dB). At full TIGHT the
-            // linked tail detector can apply up to 6 dB of reduction (half
-            // the amplitude); transient-leading intervals receive less.
-            const double tightGain = std::pow(10.0,
-                (-6.0*t*characterTight*linkedTail)/20.0);
+            tightAboveThreshold_ = tightAbove;
+            if (tightSinceOnset_ > tightHoldSamples_)
+                tightContour_ = tightDecayA_*tightContour_+
+                    (1.0-tightDecayA_);
+            const double tightTarget = std::pow(10.0,
+                (-6.0*t*characterTight*tightContour_)/20.0);
+            const double tightSmoothA =
+                tightTarget > tightGainSmoothed_
+                    ? tightGainRecoverA_ : tightGainReduceA_;
+            tightGainSmoothed_ = tightSmoothA*tightGainSmoothed_+
+                (1.0-tightSmoothA)*tightTarget;
+            // 0% must be exactly bypassed even during automated release.
+            const double tightGain = t > 0.0f ? tightGainSmoothed_ : 1.0;
             // The MASS sustain detector also uses the stereo pair. Separate
             // L/R weights would reshape equally timed hits differently merely
             // because one channel is quieter.
@@ -237,7 +259,12 @@ private:
     double bodyHighA_=0.98, bodyLowA_=0.99;
     double glueDetectorAttackA_=0.99,glueDetectorReleaseA_=0.99;
     double glueRmsA_=0.999,glueGainAttackA_=0.99,glueGainReleaseA_=0.999;
-    double glueEnv_=0.0,tightEnvelope_=0.0,autoGain_=1.0;
+    double glueEnv_=0.0,autoGain_=1.0;
+    double tightDecayA_=0.999,tightGainRecoverA_=0.99,tightGainReduceA_=0.99;
+    double tightContour_=0.0,tightGainSmoothed_=1.0;
+    std::size_t tightSinceOnset_=0,tightHoldSamples_=0;
+    std::size_t tightRefractorySamples_=0,tightMaximumAgeSamples_=0;
+    bool tightAboveThreshold_=false;
     double glueTargetGain_=1.0,glueRmsEnergy_=0.0;
     int glueTick_=0;
     bool glueDirty_=true;
