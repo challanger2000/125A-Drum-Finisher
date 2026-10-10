@@ -56,6 +56,9 @@ public:
         for (auto& c : channels_) c = Channel{};
         glueEnv_ = 0.0;
         characterLowGain_=characterHighGain_=1.0;
+        characterPunchGain_=1.25;
+        characterBodyGain_=0.65;
+        characterTightGain_=0.40;
         tightContour_ = 0.0;
         tightGainSmoothed_ = 1.0;
         tightSinceOnset_ = 0;
@@ -102,20 +105,20 @@ public:
         // the bounded decay reduction, DENSE prioritizes sustained lows.
         // The DENSE mass factor is capped at 1.0 of the calibrated 2x
         // residual, avoiding the previously rejected 3x-4x residual.
-        const float characterPunch = controls_.character == Character::Punch ? 1.25f : 0.65f;
-        const float characterBody = controls_.character == Character::Dense ? 1.00f :
+        const float characterPunchTarget = controls_.character == Character::Punch ? 1.25f : 0.65f;
+        const float characterBodyTarget = controls_.character == Character::Dense ? 1.00f :
                                     (controls_.character == Character::Tight ? 0.50f : 0.65f);
-        const float characterTight = controls_.character == Character::Tight ? 1.50f :
+        const float characterTightTarget = controls_.character == Character::Tight ? 1.50f :
                                      (controls_.character == Character::Punch ? 0.40f : 0.30f);
         // Existing macros alone were too similar after matched loudness.
         // One-pole minimum-phase low/high shelves add bounded, distinct
-        // voicing: TIGHT lean (-1.6 dB low), PUNCH neutral tonality, DENSE
+        // voicing: TIGHT lean (-3.5 dB low), PUNCH neutral tonality, DENSE
         // warmer (+1.4 dB low, -1.0 dB high). Amount is musical and
         // approaches zero with the effect controls. TIGHT-only and FINISH-
         // only must retain their established transient/selectivity profile.
         const double characterColorAmount=std::max(p,g);
         const double targetLowDb=characterColorAmount*
-            (controls_.character==Character::Tight?-1.6:
+            (controls_.character==Character::Tight?-3.5:
              (controls_.character==Character::Dense?1.4:0.0));
         const double targetHighDb=characterColorAmount*
             (controls_.character==Character::Dense?-1.0:0.0);
@@ -126,6 +129,15 @@ public:
                 (1.0-characterSmoothA_)*lowTarget;
             characterHighGain_=characterSmoothA_*characterHighGain_+
                 (1.0-characterSmoothA_)*highTarget;
+            // The three existing DSP character gains also crossfade over
+            // 20ms. Without this, live character clicks can pop even when
+            // the new shelf filters themselves are smoothed.
+            characterPunchGain_=characterSmoothA_*characterPunchGain_+
+                (1.0-characterSmoothA_)*characterPunchTarget;
+            characterBodyGain_=characterSmoothA_*characterBodyGain_+
+                (1.0-characterSmoothA_)*characterBodyTarget;
+            characterTightGain_=characterSmoothA_*characterTightGain_+
+                (1.0-characterSmoothA_)*characterTightTarget;
             const Sample x[2] = {finiteSample(left[i]), finiteSample(right[i])};
             const float peak = static_cast<float>(std::max(std::abs(x[0]),std::abs(x[1])));
             // Signal-relative stereo-linked bus compression. Threshold follows
@@ -182,7 +194,7 @@ public:
             }
             // Differential amplitude ratio: identical drum transients produce
             // the same attack boost at different input gain settings.
-            const float punchDrive = p*characterPunch*
+            const float punchDrive = p*static_cast<float>(characterPunchGain_)*
                 static_cast<float>(linkedTransient);
             // TIGHT: transient-triggered stereo-linked decay control.
             // Hold the first 15 ms of the hit, then approach bounded
@@ -202,7 +214,7 @@ public:
                 tightContour_ = tightDecayA_*tightContour_+
                     (1.0-tightDecayA_);
             const double tightTarget = std::pow(10.0,
-                (-6.0*t*characterTight*tightContour_)/20.0);
+                (-6.0*t*characterTightGain_*tightContour_)/20.0);
             const double tightSmoothA =
                 tightTarget > tightGainSmoothed_
                     ? tightGainRecoverA_ : tightGainReduceA_;
@@ -250,7 +262,7 @@ public:
                 // A 2x cap was selected after level-matched 1x/1.5x/2x/
                 // 3x/4x comparisons on 5 drum sources; beyond 2x bass
                 // benefit diminished while spectral balance/width worsened.
-                const double massAmount=b*(1.0+b)*characterBody;
+                const double massAmount=b*(1.0+b)*characterBodyGain_;
                 // Bass Finisher-derived principle: only the nonlinear odd-harmonic
                 // residual is added. Normalize the waveshaper by drive so its
                 // small-signal slope is unity; the old tanh(2.5) normalization
@@ -321,6 +333,7 @@ private:
     double fastA_=0.99, slowA_=0.999;
     double characterToneA_=0.99,characterSmoothA_=0.99;
     double characterLowGain_=1.0,characterHighGain_=1.0;
+    double characterPunchGain_=1.25,characterBodyGain_=0.65,characterTightGain_=0.40;
     double kickHighA_=0.98, kickLowA_=0.99;
     double bodyHighA_=0.98, bodyLowA_=0.99;
     double glueDetectorAttackA_=0.99,glueDetectorReleaseA_=0.99;

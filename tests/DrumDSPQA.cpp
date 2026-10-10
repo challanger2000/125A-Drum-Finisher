@@ -309,6 +309,38 @@ int main(){
         check(distinct/double(M)>0.0005,
               "CHARACTER TIGHT/PUNCH/DENSE must change full-scale sound");
     }
+    // Switching CHARACTER while playing must not introduce a one-sample
+    // discontinuity. Compare an unchanging PUNCH baseline with a live switch
+    // at an arbitrary non-zero audio sample. The post-switch signal is
+    // expected to diverge musically over the next 100ms.
+    {
+        constexpr std::size_t M=24000;
+        constexpr std::size_t switchAt=12571;
+        std::vector<float> input(M),right(M),base(M),baseR(M),switched(M),switchedR(M);
+        for(std::size_t i=0;i<M;++i) {
+            const double time=double(i)/48000.0;
+            input[i]=float(0.16*std::sin(2*pi*73.1*time+0.5)+
+                           0.035*std::sin(2*pi*2597.0*time));
+            right[i]=float(0.7*input[i]);
+        }
+        Controls c{};
+        c.punch=1.0f;c.body=1.0f;c.tight=0.3f;c.glue=0.5f;
+        c.character=Character::Punch;
+        Core unchanging;unchanging.prepare(48000.0);unchanging.setControls(c);
+        unchanging.process(input.data(),right.data(),base.data(),baseR.data(),M);
+        Core live;live.prepare(48000.0);live.setControls(c);
+        live.process(input.data(),right.data(),switched.data(),switchedR.data(),switchAt);
+        c.character=Character::Tight;live.setControls(c);
+        live.process(input.data()+switchAt,right.data()+switchAt,
+                     switched.data()+switchAt,switchedR.data()+switchAt,M-switchAt);
+        check(std::abs(double(switched[switchAt])-base[switchAt])<0.003,
+              "CHARACTER switching must smoothly interpolate the first sample");
+        double diffEnergy=0.0;
+        for(std::size_t i=switchAt+4800;i<switchAt+6000;++i)
+            diffEnergy+=std::pow(double(switched[i])-base[i],2);
+        check(std::sqrt(diffEnergy/1200)>0.002,
+              "CHARACTER automation must audibly change the processed program");
+    }
     // Host lifecycle robustness: invalid sample-rate input must not poison DSP.
     for(double invalidRate : {std::numeric_limits<double>::quiet_NaN(),
                               std::numeric_limits<double>::infinity(),
