@@ -1,5 +1,5 @@
 name: Drum Finisher Full Release QA
-# Windows VST3 gate for independently clickable CHARACTER and BYPASS CTextButtons (2026-10-10).
+# Windows VST3 gate for one BYPASS header toggle, three distinct CHARACTER buttons and smoothed live voicing (2026-10-10).
 # Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
 # Previous full release validation predates the current DSP; no inherited PASS is accepted.
 
@@ -18,7 +18,7 @@ jobs:
       - name: Checkout Drum Finisher
         uses: actions/checkout@v4
 
-      - name: Verify five native CTextButtons and two host parameter mappings
+      - name: Verify four actual buttons, one bypass toggle and two host parameter mappings
         run: python tests/gui_control_contract_qa.py
 
       - name: Configure Drum Finisher
@@ -55,26 +55,33 @@ jobs:
           [xml]$uidesc = Get-Content -LiteralPath $resource.FullName -Raw
           $tags = @{ Character = 106; Bypass = 107; Zoom = 9000;
                       CharacterTight = 9101; CharacterPunch = 9102;
-                      CharacterDense = 9103; ActiveButton = 9104; BypassButton = 9105 }
+                      CharacterDense = 9103; BypassButton = 9105 }
           foreach ($name in $tags.Keys) {
             $binding = $uidesc.SelectSingleNode("/vstgui-ui-description/control-tags/control-tag[@name='$name']")
             if (-not $binding -or [int]$binding.tag -ne $tags[$name]) {
               throw "Bundled GUI tag $name incorrect"
             }
           }
+          if ($uidesc.SelectSingleNode("/vstgui-ui-description/control-tags/control-tag[@name='ActiveButton']")) {
+            throw "Redundant second bypass button is still declared"
+          }
           $buttons = $uidesc.SelectNodes("//view[@class='CTextButton']")
-          if ($buttons.Count -ne 5) { throw "Expected exactly five native CTextButtons, found $($buttons.Count)" }
-          foreach ($name in @('CharacterTight','CharacterPunch','CharacterDense','ActiveButton','BypassButton')) {
+          if ($buttons.Count -ne 4) { throw "Expected exactly four native CTextButtons, found $($buttons.Count)" }
+          foreach ($name in @('CharacterTight','CharacterPunch','CharacterDense','BypassButton')) {
             $button = $uidesc.SelectSingleNode("//view[@class='CTextButton' and @control-tag='$name']")
             if (-not $button) { throw "Missing clickable CTextButton: $name" }
             if ($button.GetAttribute('mouse-enabled') -ne 'true') { throw "$name not mouse-enabled" }
           }
-          $zoom = $uidesc.SelectSingleNode("//view[@class='CSegmentButton' and @control-tag='Zoom']")
-          if (-not $zoom) { throw "Zoom is missing" }
-          if ($uidesc.SelectNodes("//view[@class='CSegmentButton']").Count -ne 1) {
-            throw "Unclickable CHARACTER or BYPASS segment buttons are still bundled"
+          $bypass = $uidesc.SelectSingleNode("//view[@class='CTextButton' and @control-tag='BypassButton']")
+          if ($bypass.GetAttribute('origin') -ne '1010,82') {
+            throw "BYPASS must be aligned below ZOOM in the header"
           }
-          Write-Host "EXACT packaged VST3: five real CHARACTER/BYPASS CTextButtons, host tags 106/107 and ZOOM verified"
+          $zoom = $uidesc.SelectSingleNode("//view[@class='CSegmentButton' and @control-tag='Zoom']")
+          if (-not $zoom) { throw "ZOOM selector missing" }
+          if ($uidesc.SelectNodes("//view[@class='CSegmentButton']").Count -ne 1) {
+            throw "Unclickable CHARACTER or BYPASS segment still bundled"
+          }
+          Write-Host "EXACT packaged VST3: three CHARACTER buttons, one header BYPASS toggle; IDs 106/107 stable"
 
       - name: Validate exact VST3 with Steinberg normal and local-instance modes
         shell: pwsh
