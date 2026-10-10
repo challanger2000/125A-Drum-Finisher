@@ -40,8 +40,8 @@ public:
         glueGainAttackA_ = pole(0.012);
         glueGainReleaseA_ = pole(0.240);
         // OUTPUT trim automation must not jump directly at arbitrary samples.
-        // A 5ms one-pole gain ramp is bounded, sample-rate independent.
-        outputGainA_ = pole(0.005);
+        // An 8ms one-pole gain ramp is bounded, sample-rate independent.
+        outputGainA_ = pole(0.008);
         // TIGHT is triggered by a linked transient, then follows a bounded
         // exponential attenuation contour. All times are sample-rate derived.
         characterToneA_ = pole(1.0/(twoPi*900.0));
