@@ -105,21 +105,22 @@ public:
         // the bounded decay reduction, DENSE prioritizes sustained lows.
         // The DENSE mass factor is capped at 1.0 of the calibrated 2x
         // residual, avoiding the previously rejected 3x-4x residual.
-        const float characterPunchTarget = controls_.character == Character::Punch ? 1.25f : 0.65f;
+        const float characterPunchTarget = controls_.character == Character::Punch ? 1.25f :
+                                           (controls_.character == Character::Tight ? 1.00f : 0.65f);
         const float characterBodyTarget = controls_.character == Character::Dense ? 1.00f :
-                                    (controls_.character == Character::Tight ? 0.50f : 0.65f);
+                                    (controls_.character == Character::Tight ? 0.65f : 0.65f);
         const float characterTightTarget = controls_.character == Character::Tight ? 1.50f :
                                      (controls_.character == Character::Punch ? 0.40f : 0.30f);
-        // Existing macros alone were too similar after matched loudness.
-        // One-pole minimum-phase low/high shelves add bounded, distinct
-        // voicing: TIGHT lean (-3.5 dB low), PUNCH neutral tonality, DENSE
-        // warmer (+1.4 dB low, -1.0 dB high). Amount is musical and
-        // approaches zero with the effect controls. TIGHT-only and FINISH-
-        // only must retain their established transient/selectivity profile.
+        // Preserve kick foundation and early transient in TIGHT instead of
+        // shrinking the whole drum bus. CHARACTER = TIGHT already achieves
+        // shorter decay via its stereo-linked transient/hold/decay envelope;
+        // it must not additionally apply a broad -3.5 dB low shelf.
+        // DENSE retains the bounded warm shelf (+1.4 dB low/-1 dB high),
+        // and PUNCH keeps neutral tonality. The established TIGHT decay
+        // envelope and all other CHARACTER transfers remain unchanged.
         const double characterColorAmount=std::max(p,g);
         const double targetLowDb=characterColorAmount*
-            (controls_.character==Character::Tight?-3.5:
-             (controls_.character==Character::Dense?1.4:0.0));
+            (controls_.character==Character::Dense?1.4:0.0);
         const double targetHighDb=characterColorAmount*
             (controls_.character==Character::Dense?-1.0:0.0);
         const double lowTarget=std::pow(10.0,targetLowDb/20.0);
