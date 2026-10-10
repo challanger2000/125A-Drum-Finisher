@@ -5,6 +5,7 @@
     <color name="Muted" rgba="#AAB0B9FF"/>
     <color name="Panel" rgba="#1A1D22FF"/>
     <color name="Accent" rgba="#B07848FF"/>
+    <color name="SwitchFrame" rgba="#68615AFF"/>
   </colors>
   <control-tags>
     <control-tag name="Punch" tag="100"/>
@@ -16,23 +17,40 @@
     <control-tag name="Character" tag="106"/>
     <control-tag name="Bypass" tag="107"/>
     <control-tag name="Zoom" tag="9000"/>
+    <control-tag name="CharacterTight" tag="9101"/>
+    <control-tag name="CharacterPunch" tag="9102"/>
+    <control-tag name="CharacterDense" tag="9103"/>
+    <control-tag name="ActiveButton" tag="9104"/>
+    <control-tag name="BypassButton" tag="9105"/>
   </control-tags>
   <fonts>
     <font name="Title" font-name="Arial" size="25" bold="true"/>
     <font name="Label" font-name="Arial" size="13" bold="true"/>
     <font name="Small" font-name="Arial" size="11"/>
   </fonts>
+  <gradients>
+    <gradient name="SwitchNormal">
+      <color-stop rgba="#101216FF" start="0"/>
+      <color-stop rgba="#292D32FF" start="0.55"/>
+      <color-stop rgba="#171A1FFF" start="1"/>
+    </gradient>
+    <gradient name="SwitchSelected">
+      <color-stop rgba="#51351FFF" start="0"/>
+      <color-stop rgba="#B07848FF" start="0.58"/>
+      <color-stop rgba="#624026FF" start="1"/>
+    </gradient>
+  </gradients>
   <template name="view" class="CViewContainer" origin="0,0" size="1200,540" transparent="false" background-color="Panel">
     <view class="CView" custom-view-name="DrumBrandLogo" origin="23,15" size="156,79" mouse-enabled="false"/>
     <view class="CSegmentButton" origin="1010,34" size="155,25" control-tag="Zoom" default-value="0" style="horizontal" segment-names="100%,150%" font="Small" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
     <view class="CTextLabel" origin="200,24" size="800,42" title="125A DRUM FINISHER V1" font="Title" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
     <view class="CTextLabel" origin="275,75" size="650,24" title="PRECISION DRUM BUS FINISHING" font="Small" font-color="Muted" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="75,162" size="120,22" title="PUNCH" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="260,162" size="120,22" title="MASS" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="445,162" size="120,22" title="TIGHT" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="630,162" size="120,22" title="FINISH" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="815,162" size="120,22" title="GLUE" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="1000,162" size="120,22" title="OUTPUT" font="Label" font-color="Text" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="75,162" size="120,22" title="PUNCH (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="260,162" size="120,22" title="MASS (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="445,162" size="120,22" title="TIGHT (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="630,162" size="120,22" title="FINISH (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="815,162" size="120,22" title="GLUE (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="1000,162" size="120,22" title="OUTPUT (dB)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
     <view class="CParamDisplay" origin="70,336" size="125,24" control-tag="Punch" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CParamDisplay" origin="255,336" size="125,24" control-tag="Mass" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CParamDisplay" origin="440,336" size="125,24" control-tag="Tight" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
@@ -41,8 +59,11 @@
     <view class="CParamDisplay" origin="995,336" size="125,24" control-tag="Output" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CTextLabel" origin="425,393" size="350,24" title="CHARACTER" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
     <view class="CTextLabel" origin="445,510" size="310,18" title="125A SYSTEMS  •  V1.0.0" font="Small" font-color="Muted" transparent="true" text-alignment="center"/>
-    <view class="CSegmentButton" origin="999,440" size="165,36" control-tag="Bypass" default-value="0" style="horizontal" segment-names="ON,BYPASS" font="Label" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
-    <view class="CSegmentButton" origin="415,428" size="370,34" control-tag="Character" default-value="0.5" style="horizontal" segment-names="TIGHT,PUNCH,DENSE" font="Label" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
+    <view class="CTextButton" origin="415,428" size="118,34" control-tag="CharacterTight" title="TIGHT" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
+    <view class="CTextButton" origin="541,428" size="118,34" control-tag="CharacterPunch" title="PUNCH" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
+    <view class="CTextButton" origin="667,428" size="118,34" control-tag="CharacterDense" title="DENSE" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
+    <view class="CTextButton" origin="999,440" size="78,36" control-tag="ActiveButton" title="ON" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
+    <view class="CTextButton" origin="1085,440" size="79,36" control-tag="BypassButton" title="BYPASS" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
     <view class="CControl" custom-view-name="DrumKnobPunch" origin="70,196" size="125,125" control-tag="Punch"/>
     <view class="CControl" custom-view-name="DrumKnobBody" origin="255,196" size="125,125" control-tag="Mass"/>
     <view class="CControl" custom-view-name="DrumKnobTight" origin="440,196" size="125,125" control-tag="Tight"/>
