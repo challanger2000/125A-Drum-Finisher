@@ -40,6 +40,8 @@
     </gradient>
   </gradients>
   <template name="view" class="CViewContainer" origin="0,0" size="1200,540" transparent="false" background-color="Panel">
+    <!-- First child: passive engraved faceplate, always beneath the interactive controls. -->
+    <view class="CView" custom-view-name="DrumFaceplate" origin="0,0" size="1200,540" mouse-enabled="false"/>
     <view class="CView" custom-view-name="DrumBrandLogo" origin="23,15" size="156,79" mouse-enabled="false"/>
     <view class="CSegmentButton" origin="1010,34" size="155,25" control-tag="Zoom" default-value="0" style="horizontal" segment-names="100%,150%" font="Small" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
     <view class="CTextLabel" origin="200,24" size="800,42" title="125A DRUM FINISHER V1" font="Title" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>

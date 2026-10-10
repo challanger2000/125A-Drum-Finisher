@@ -47,7 +47,7 @@ if(DRUM_BUILD_VST3)
     set(SMTG_CREATE_PLUGIN_LINK OFF CACHE BOOL "" FORCE)
     set(SMTG_ENABLE_VSTGUI_SUPPORT ON CACHE BOOL "" FORCE)
     add_subdirectory("${VST3_SDK_ROOT}" "${CMAKE_BINARY_DIR}/vst3sdk")
-    smtg_add_vst3plugin(125A_Drum_Finisher src/vst/DrumPlugin.cpp src/DrumCore.h src/dsp/AdaptiveResonanceSuppressor.cpp src/gui/SteelKnob.cpp src/gui/SteelKnob.h src/gui/BrandLogoView.cpp src/gui/BrandLogoView.h)
+    smtg_add_vst3plugin(125A_Drum_Finisher src/vst/DrumPlugin.cpp src/DrumCore.h src/dsp/AdaptiveResonanceSuppressor.cpp src/gui/SteelKnob.cpp src/gui/SteelKnob.h src/gui/BrandLogoView.cpp src/gui/BrandLogoView.h src/gui/FaceplateView.cpp src/gui/FaceplateView.h)
     target_include_directories(125A_Drum_Finisher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_include_directories(125A_Drum_Finisher PRIVATE ${VST3_SDK_ROOT}/vstgui4)
     smtg_target_add_plugin_resources(125A_Drum_Finisher RESOURCES

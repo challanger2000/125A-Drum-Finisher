@@ -1,6 +1,7 @@
 #include "DrumCore.h"
 #include "gui/SteelKnob.h"
 #include "gui/BrandLogoView.h"
+#include "gui/FaceplateView.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/controls/ccontrol.h"
 #include "vstgui/lib/controls/cbuttons.h"
@@ -298,6 +299,13 @@ public:
         const VSTGUI::UIAttributes& attributes,
         const VSTGUI::IUIDescription*,VSTGUI::VST3Editor* editor) override {
         if(!name||!editor)return nullptr;
+        if(std::strcmp(name,"DrumFaceplate")==0){
+            VSTGUI::CPoint o{0.0,0.0},z{1200.0,540.0};
+            attributes.getPointAttribute("origin",o);
+            attributes.getPointAttribute("size",z);
+            return new DrumFinisher::FaceplateView(
+                VSTGUI::CRect(o.x,o.y,o.x+z.x,o.y+z.y));
+        }
         if(std::strcmp(name,"DrumBrandLogo")==0){
             VSTGUI::CPoint o{0.0,0.0},z{150.0,70.0};
             attributes.getPointAttribute("origin",o);

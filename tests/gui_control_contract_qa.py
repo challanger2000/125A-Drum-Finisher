@@ -68,4 +68,21 @@ for token in ("beginEdit(id);","setParamNormalized(id,value);",
 assert "tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) override" in code
 assert "kCharacter=106, kBypass=107" in code
 assert "static constexpr int32 stateVersion=1" in code
-print("PASS: three character CTextButtons plus one header BYPASS toggle, 106/107 host gestures, plain headers and %/dB dynamic value text, UI lifecycle mapping")
+
+# Decorations must be passive and BEHIND controls, not invisible click blockers.
+view=doc.find("./template")
+assert view is not None
+children=view.findall("./view")
+assert children[0].get("custom-view-name")=="DrumFaceplate"
+assert children[0].get("origin")=="0,0"
+assert children[0].get("size")=="1200,540"
+assert children[0].get("mouse-enabled")=="false"
+layout=(root/"src"/"gui"/"FaceplateView.cpp").read_text(encoding="utf-8")
+assert "setMouseEnabled(false);" in layout
+assert "setTransparency(true);" in layout
+assert "CRect(35,142,1165,372)" in layout, "main frame absent"
+assert "CRect(388,386,812,480)" in layout, "character frame absent"
+assert "CRect(998,22,1176,122)" in layout, "header frame absent"
+assert "FaceplateView.cpp" in (root/"CMakeLists.txt").read_text()
+assert '"DrumFaceplate"' in code
+print("PASS: units only under knobs, four buttons, passive decorative frame behind all clickable controls")
