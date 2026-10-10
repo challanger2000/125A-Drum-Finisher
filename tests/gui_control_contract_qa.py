@@ -48,10 +48,12 @@ for name in ("Punch","Mass","Tight","Finish","Glue","Output"):
               if v.get("control-tag")==name]
     assert len(displays)==1, "value display missing or duplicated: "+name
 assert "getParamStringByValue(" in code
-assert "id>=kPunch && id<=kGlue" in code
-assert '"%.0f %%"' in code
-assert '"0.0 dB"' in code and '"%+.1f dB"' in code
-assert "24.0*clampUnit(valueNormalized)-12.0" in code
+assert "DrumFinisher::valueText" in code
+formatter=(root/"src"/"gui"/"ValueText.h").read_text(encoding="utf-8")
+assert '"%.0f %%"' in formatter
+assert '"0.0 dB"' in formatter and '"%+.1f dB"' in formatter
+assert "24.0*unit-12.0" in formatter
+assert "drum_value_text_qa" in (root/"CMakeLists.txt").read_text()
 assert "std::array<VSTGUI::CTextButton*,4> buttons_" in code
 assert "dynamic_cast<VSTGUI::CTextButton*>(control)" in code
 assert "button->setListener(this)" in code

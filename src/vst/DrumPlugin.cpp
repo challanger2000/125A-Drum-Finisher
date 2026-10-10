@@ -2,6 +2,7 @@
 #include "gui/SteelKnob.h"
 #include "gui/BrandLogoView.h"
 #include "gui/FaceplateView.h"
+#include "gui/ValueText.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/controls/ccontrol.h"
 #include "vstgui/lib/controls/cbuttons.h"
@@ -265,23 +266,13 @@ public:
     tresult PLUGIN_API getParamStringByValue(
         ParamID id, ParamValue valueNormalized, String128 resultText) override {
         if (!resultText) return kInvalidArgument;
-        char text[32]{};
-        if (id>=kPunch && id<=kGlue) {
-            std::snprintf(text,sizeof(text),"%.0f %%",
-                clampUnit(valueNormalized)*100.0);
-        } else if (id==kOutput) {
-            const double db=24.0*clampUnit(valueNormalized)-12.0;
-            if (std::abs(db)<0.05)
-                std::snprintf(text,sizeof(text),"0.0 dB");
-            else
-                std::snprintf(text,sizeof(text),"%+.1f dB",db);
-        } else {
+        if (id<kPunch || id>kOutput)
             return EditController::getParamStringByValue(id,valueNormalized,resultText);
-        }
-        // VST3 String128 is UTF-16 (TChar); use ASCII-only unit labels
-        // so this stays compatible with the pinned Steinberg SDK.
+        const auto text=DrumFinisher::valueText(static_cast<std::uint32_t>(id),
+                                                valueNormalized);
+        // VST3 String128 is UTF-16 TChar; all unit glyphs here are ASCII.
         std::size_t i=0;
-        for (;text[i]!=0 && i<127;++i)
+        for (;i<text.size() && i<127;++i)
             resultText[i]=static_cast<TChar>(static_cast<unsigned char>(text[i]));
         resultText[i]=0;
         return kResultTrue;

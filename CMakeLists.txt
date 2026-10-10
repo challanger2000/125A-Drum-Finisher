@@ -37,6 +37,10 @@ add_test(NAME drum_finish_resonance_qa COMMAND drum_finish_resonance_qa)
 add_executable(drum_finish_targeted_qa tests/DrumFinishTargetedQA.cpp src/dsp/AdaptiveResonanceSuppressor.cpp)
 target_include_directories(drum_finish_targeted_qa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME drum_finish_targeted_qa COMMAND drum_finish_targeted_qa)
+# Identical formatter used by VST3 CParamDisplay via controller and CTest.
+add_executable(drum_value_text_qa tests/DrumValueTextQA.cpp)
+target_include_directories(drum_value_text_qa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME drum_value_text_qa COMMAND drum_value_text_qa)
 
 option(DRUM_BUILD_VST3 "Build VST3 using an existing recursively cloned Steinberg SDK" OFF)
 if(DRUM_BUILD_VST3)
