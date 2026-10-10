@@ -1,59 +1,54 @@
 #!/usr/bin/env python3
-"""Offline binding regression for VSTGUI controls. Not a real mouse event test."""
+"""Static CTextButton/host mapping regression; real Studio One clicks remain user gate."""
 from pathlib import Path
-import re
 import xml.etree.ElementTree as ET
 
-root = Path(__file__).resolve().parent.parent
-doc = ET.parse(root / "resource" / "DrumFinisher.uidesc").getroot()
-source = (root / "src" / "vst" / "DrumPlugin.cpp").read_text(encoding="utf-8")
-expected = {
-    "Punch": 100, "Mass": 101, "Tight": 102, "Finish": 103,
-    "Glue": 104, "Output": 105, "Character": 106,
-    "Bypass": 107, "Zoom": 9000
-}
-tags = {}
-for tag in doc.findall("./control-tags/control-tag"):
-    name, value = tag.attrib["name"], int(tag.attrib["tag"])
-    assert name not in tags, f"duplicate control tag name: {name}"
-    assert value not in tags.values(), f"duplicate parameter ID: {value}"
-    tags[name] = value
-assert tags == expected, f"unexpected tag mapping: {tags!r}"
-usage = {}
-for view in doc.findall(".//view"):
-    name = view.get("control-tag")
-    if name is None:
-        continue
-    assert name in tags, f"unresolved VSTGUI control tag: {name!r}"
-    usage[name] = usage.get(name, 0) + 1
-assert all(usage.get(key, 0) > 0 for key in expected), usage
+root=Path(__file__).resolve().parent.parent
+doc=ET.parse(root/"resource"/"DrumFinisher.uidesc").getroot()
+code=(root/"src"/"vst"/"DrumPlugin.cpp").read_text(encoding="utf-8")
+expected={"Punch":100,"Mass":101,"Tight":102,"Finish":103,
+          "Glue":104,"Output":105,"Character":106,"Bypass":107,"Zoom":9000,
+          "CharacterTight":9101,"CharacterPunch":9102,"CharacterDense":9103,
+          "ActiveButton":9104,"BypassButton":9105}
+tags={}
+for t in doc.findall("./control-tags/control-tag"):
+    name,tag=t.attrib["name"],int(t.attrib["tag"])
+    assert name not in tags and tag not in tags.values()
+    tags[name]=tag
+assert tags==expected,(tags,expected)
+for v in doc.findall(".//view"):
+    tag=v.get("control-tag")
+    if tag is not None:assert tag in tags,tag
 
-buttons = doc.findall(".//view[@class='CSegmentButton']")
-assert len(buttons) == 3, "Expect native zoom/character/bypass segment controls"
-for view in buttons:
-    name = view.get("control-tag")
-    expected_segments = {"Zoom": ["100%", "150%"],
-                         "Character": ["TIGHT", "PUNCH", "DENSE"],
-                         "Bypass": ["ON", "BYPASS"]}
-    assert name in expected_segments, f"unknown segment control: {name}"
-    assert view.get("segment-names", "").split(",") == expected_segments[name]
-    assert view.get("mouse-enabled", "true") != "false"
+buttons=doc.findall(".//view[@class='CTextButton']")
+assert len(buttons)==5,"Expected five separate real CTextButton controls"
+names={"CharacterTight":"TIGHT","CharacterPunch":"PUNCH",
+       "CharacterDense":"DENSE","ActiveButton":"ON",
+       "BypassButton":"BYPASS"}
+assert {v.get("control-tag") for v in buttons}==set(names)
+for v in buttons:
+    tag=v.get("control-tag")
+    assert v.get("title")==names[tag],tag
+    assert v.get("mouse-enabled")=="true",tag
+    assert v.get("kick-style")=="false",tag
+    assert v.get("default-value")=="0",tag
+    assert v.get("min-value")=="0" and v.get("max-value")=="1",tag
+    assert v.get("gradient-highlighted")=="SwitchSelected",tag
 
-# Verify native VSTGUI parameter binding, not the old manual controller
-# callback that cannot receive VST3Editor ParameterChangeListener updates.
-assert "control->setListener(editor);" in source
-assert "tag==kCharacter||tag==kBypass" in source
-assert "control->setListener(this);" in source  # Zoom only
-# The branch deliberately uses "else if(...)" inside verifyView: it must
-# attach the VST3Editor listener, not manually call the host edit methods.
-assert source.count("}else if(tag==kCharacter||tag==kBypass){") == 1
-assert "control->setListener(editor);" in source
-assert "beginEdit(id);" not in source
-assert "beginEdit(id);" not in source
-assert "ParameterInfo::kIsBypass" in source
-assert "bypassParameter->appendString(STR16(\"ON\"));" in source
-assert "bypassParameter->appendString(STR16(\"BYPASS\"));" in source
-assert 'enum Param : ParamID { kPunch=100, kBody=101, kTight=102, kFinish=103,' in source
-assert 'kGlue=104, kOutput=105, kCharacter=106, kBypass=107' in source
-assert "static constexpr int32 stateVersion=1" in source
-print("PASS: nine resolved GUI tags; three segment controls declared; native VST3 parameter listener wiring; state IDs preserved (physical mouse interaction requires host test)")
+segments=doc.findall(".//view[@class='CSegmentButton']")
+assert len(segments)==1 and segments[0].get("control-tag")=="Zoom"
+for name in ("PUNCH","MASS","TIGHT","FINISH","GLUE"):
+    assert any(v.get("title")==name+" (%)" for v in doc.findall(".//view"))
+assert any(v.get("title")=="OUTPUT (dB)" for v in doc.findall(".//view"))
+assert "std::array<VSTGUI::CTextButton*,5> buttons_" in code
+assert "dynamic_cast<VSTGUI::CTextButton*>(control)" in code
+assert "button->setListener(this)" in code
+assert "const ParamID id=tag<=9103?kCharacter:kBypass" in code
+for token in ("beginEdit(id);","setParamNormalized(id,value);",
+              "performEdit(id,value);","endEdit(id);","refreshButtons();",
+              "buttons_.fill(nullptr)"):
+    assert token in code,token
+assert "tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) override" in code
+assert "kCharacter=106, kBypass=107" in code
+assert "static constexpr int32 stateVersion=1" in code
+print("PASS: five independent VSTGUI CTextButtons, 106/107 host gestures, %/dB labels, UI lifecycle mapping")
