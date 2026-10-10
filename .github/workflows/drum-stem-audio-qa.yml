@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [v1.0.0-engineering]
-    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp', 'tests/full_chain_qa.py', 'tests/DrumDSPQA.cpp', 'tests/DrumPrecisionQA.cpp', 'tests/DrumBypassQA.cpp', 'tests/DrumCoreTests.cpp', 'tests/expanded_module_qa.py', 'tests/dsp_function_diagnostics.py', 'tests/focused_mass_glue_qa.py', 'src/DrumCore.h', 'src/dsp/**']
+    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp', 'tests/full_chain_qa.py', 'tests/DrumDSPQA.cpp', 'tests/DrumPrecisionQA.cpp', 'tests/DrumBypassQA.cpp', 'tests/DrumTailQA.cpp', 'tests/DrumRealtimeBench.cpp', 'tests/DrumCoreTests.cpp', 'tests/expanded_module_qa.py', 'tests/dsp_function_diagnostics.py', 'tests/focused_mass_glue_qa.py', 'src/DrumCore.h', 'src/dsp/**']
 jobs:
   audio-qa:
     runs-on: ubuntu-24.04
@@ -32,6 +32,12 @@ jobs:
           ./drum_dsp_qa
           g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -I src tests/DrumPrecisionQA.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_precision_qa
           ./drum_precision_qa
+      - name: Verify impulse tails and p95/p99 single-sample realtime work
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -I src tests/DrumTailQA.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_tail_qa
+          ./drum_tail_qa
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -I src tests/DrumRealtimeBench.cpp src/dsp/AdaptiveResonanceSuppressor.cpp -o drum_realtime_bench
+          ./drum_realtime_bench
       - name: Download, render and measure licensed drum-only fixtures
         run: python3 tests/offline_drum_qa.py ./drum_offline_render
       - name: Extended programme-level module measurements
