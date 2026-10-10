@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [v1.0.0-engineering]
-    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp', 'tests/DrumDSPQA.cpp', 'tests/DrumPrecisionQA.cpp', 'tests/DrumBypassQA.cpp', 'tests/DrumCoreTests.cpp', 'tests/expanded_module_qa.py', 'tests/dsp_function_diagnostics.py', 'tests/focused_mass_glue_qa.py', 'src/DrumCore.h', 'src/dsp/**']
+    paths: ['.github/workflows/drum-stem-audio-qa.yml', 'tests/offline_drum_qa.py', 'tests/offline_render.cpp', 'tests/full_chain_qa.py', 'tests/DrumDSPQA.cpp', 'tests/DrumPrecisionQA.cpp', 'tests/DrumBypassQA.cpp', 'tests/DrumCoreTests.cpp', 'tests/expanded_module_qa.py', 'tests/dsp_function_diagnostics.py', 'tests/focused_mass_glue_qa.py', 'src/DrumCore.h', 'src/dsp/**']
 jobs:
   audio-qa:
     runs-on: ubuntu-24.04
@@ -36,6 +36,8 @@ jobs:
         run: python3 tests/offline_drum_qa.py ./drum_offline_render
       - name: Extended programme-level module measurements
         run: python3 tests/expanded_module_qa.py ./drum_offline_render
+      - name: Full stereo processing chain at 0, 25, 50, 75 and 100 percent
+        run: python3 tests/full_chain_qa.py ./drum_offline_render
       - name: Diagnose MASS harmonics and GLUE dynamic response
         run: python3 tests/dsp_function_diagnostics.py ./drum_offline_render
       - name: Controlled MASS and GLUE input-level diagnostics

@@ -26,6 +26,13 @@ int main(int argc,char** argv){
     else if(module=="TIGHT")c.tight=amount;
     else if(module=="FINISH")c.finish=amount;
     else if(module=="GLUE")c.glue=amount;
+    else if(module=="ALL" || module=="ALL_TIGHT" || module=="ALL_DENSE") {
+        // Test the *actual* combined chain, rather than summing independent
+        // module renders. 100% each is a deliberate worst-case user preset.
+        c.punch=c.body=c.tight=c.finish=c.glue=amount;
+        if(module=="ALL_TIGHT") c.character=a125::drum::Character::Tight;
+        if(module=="ALL_DENSE") c.character=a125::drum::Character::Dense;
+    }
     else if(module!="NEUTRAL")return 2;
     core.setControls(c);
     constexpr size_t block=512;
