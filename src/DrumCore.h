@@ -111,18 +111,20 @@ public:
                                     (controls_.character == Character::Tight ? 0.65f : 0.65f);
         const float characterTightTarget = controls_.character == Character::Tight ? 1.50f :
                                      (controls_.character == Character::Punch ? 0.40f : 0.30f);
-        // Preserve kick foundation and early transient in TIGHT instead of
-        // shrinking the whole drum bus. CHARACTER = TIGHT already achieves
-        // shorter decay via its stereo-linked transient/hold/decay envelope;
-        // it must not additionally apply a broad -3.5 dB low shelf.
-        // DENSE retains the bounded warm shelf (+1.4 dB low/-1 dB high),
-        // and PUNCH keeps neutral tonality. The established TIGHT decay
-        // envelope and all other CHARACTER transfers remain unchanged.
+        // Preserve the original TIGHT spectral *tilt* without shrinking
+        // its kick and entire program: the previous -3.5 dB low shelf
+        // attenuated every drum region on the user's actual 50% reference.
+        // Mathematically, a neutral low band and reciprocal +3.5 dB high
+        // shelf keep the same linear frequency ratio after level matching
+        // while no longer removing the absolute kick foundation.
+        // The transient-triggered linked TIGHT tail contour is unchanged.
+        // DENSE's warm shelf and PUNCH's neutral spectrum are untouched.
         const double characterColorAmount=std::max(p,g);
         const double targetLowDb=characterColorAmount*
             (controls_.character==Character::Dense?1.4:0.0);
         const double targetHighDb=characterColorAmount*
-            (controls_.character==Character::Dense?-1.0:0.0);
+            (controls_.character==Character::Tight?3.5:
+             (controls_.character==Character::Dense?-1.0:0.0));
         const double lowTarget=std::pow(10.0,targetLowDb/20.0);
         const double highTarget=std::pow(10.0,targetHighDb/20.0);
         for (std::size_t i=0; i<frames; ++i) {
