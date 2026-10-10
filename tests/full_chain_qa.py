@@ -50,4 +50,20 @@ for character in ("ALL","ALL_TIGHT","ALL_DENSE"):
         previous=value
         print("COMBINED",character,amount,"rms_delta_dB",round(value,4),
               "peak",round(peak,6),flush=True)
-print("COMBINED_STEREO_CHAIN REGRESSION PASS; DAW and listening verification separate",flush=True)
+
+# Compare the real CHARACTER voicings under the representative user knob
+# settings, after equal full-band RMS normalization. Old voicings were
+# merely 0.029-0.074 relative residual RMS and <0.5 dB spectral difference.
+compare={}
+for mode in ("CHAR_PUNCH","CHAR_TIGHT","CHAR_DENSE"):
+    left,right=render(L,R,mode,1.0)
+    samples=left+right
+    rms_value=rms(samples)
+    compare[mode]=[float(x)/max(1e-12,rms_value) for x in samples]
+for one,two in (("CHAR_PUNCH","CHAR_TIGHT"),("CHAR_PUNCH","CHAR_DENSE"),("CHAR_TIGHT","CHAR_DENSE")):
+    a,b=compare[one],compare[two]
+    difference=math.sqrt(sum((x-y)**2 for x,y in zip(a,b))/len(a))
+    print("CHARACTER_CONTRAST",one,two,"level_matched_difference",round(difference,6),flush=True)
+    if difference<0.075:
+        raise AssertionError("CHARACTER voicings lack minimum differentiated transfer")
+print("COMBINED_STEREO_CHAIN AND CHARACTER CONTRAST PASS; actual DAW listening remains separate",flush=True)

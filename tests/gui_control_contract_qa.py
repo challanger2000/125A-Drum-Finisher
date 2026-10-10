@@ -9,7 +9,7 @@ code=(root/"src"/"vst"/"DrumPlugin.cpp").read_text(encoding="utf-8")
 expected={"Punch":100,"Mass":101,"Tight":102,"Finish":103,
           "Glue":104,"Output":105,"Character":106,"Bypass":107,"Zoom":9000,
           "CharacterTight":9101,"CharacterPunch":9102,"CharacterDense":9103,
-          "ActiveButton":9104,"BypassButton":9105}
+          "BypassButton":9105}
 tags={}
 for t in doc.findall("./control-tags/control-tag"):
     name,tag=t.attrib["name"],int(t.attrib["tag"])
@@ -21,10 +21,9 @@ for v in doc.findall(".//view"):
     if tag is not None:assert tag in tags,tag
 
 buttons=doc.findall(".//view[@class='CTextButton']")
-assert len(buttons)==5,"Expected five separate real CTextButton controls"
+assert len(buttons)==4,"Expected 3 character keys and 1 bypass toggle"
 names={"CharacterTight":"TIGHT","CharacterPunch":"PUNCH",
-       "CharacterDense":"DENSE","ActiveButton":"ON",
-       "BypassButton":"BYPASS"}
+       "CharacterDense":"DENSE","BypassButton":"BYPASS"}
 assert {v.get("control-tag") for v in buttons}==set(names)
 for v in buttons:
     tag=v.get("control-tag")
@@ -40,10 +39,15 @@ assert len(segments)==1 and segments[0].get("control-tag")=="Zoom"
 for name in ("PUNCH","MASS","TIGHT","FINISH","GLUE"):
     assert any(v.get("title")==name+" (%)" for v in doc.findall(".//view"))
 assert any(v.get("title")=="OUTPUT (dB)" for v in doc.findall(".//view"))
-assert "std::array<VSTGUI::CTextButton*,5> buttons_" in code
+assert "std::array<VSTGUI::CTextButton*,4> buttons_" in code
 assert "dynamic_cast<VSTGUI::CTextButton*>(control)" in code
 assert "button->setListener(this)" in code
 assert "const ParamID id=tag<=9103?kCharacter:kBypass" in code
+assert "double(control->getValueNormalized()>=0.5f)" in code, "one toggle must emit both states"
+assert "tag==9105?3:tag-9101" in code
+bypass=[v for v in buttons if v.get("control-tag")=="BypassButton"][0]
+assert bypass.get("origin")=="1010,82" and bypass.get("size")=="154,30"
+assert all(v.get("origin").endswith(",428") for v in buttons if v is not bypass)
 for token in ("beginEdit(id);","setParamNormalized(id,value);",
               "performEdit(id,value);","endEdit(id);","refreshButtons();",
               "buttons_.fill(nullptr)"):
@@ -51,4 +55,4 @@ for token in ("beginEdit(id);","setParamNormalized(id,value);",
 assert "tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) override" in code
 assert "kCharacter=106, kBypass=107" in code
 assert "static constexpr int32 stateVersion=1" in code
-print("PASS: five independent VSTGUI CTextButtons, 106/107 host gestures, %/dB labels, UI lifecycle mapping")
+print("PASS: three character CTextButtons plus one header BYPASS toggle, 106/107 host gestures, %/dB labels, UI lifecycle mapping")

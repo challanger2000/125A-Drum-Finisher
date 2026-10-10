@@ -92,9 +92,18 @@ public:
         // automating a module from 0% starts with stale envelopes.
         const bool neutral = p == 0 && b == 0 && t == 0 && f == 0 &&
                              g == 0 && controls_.outputDb == 0;
-        const float characterPunch = controls_.character == Character::Punch ? 1.0f : 0.75f;
-        const float characterBody = controls_.character == Character::Dense ? 1.15f : 0.85f;
-        const float characterTight = controls_.character == Character::Tight ? 1.0f : 0.75f;
+        // Explicitly separate established processing modes. The old
+        // 0.75/1.0/1.15 variations measured nearly identical after level
+        // matching (<0.5 dB spectral differences on the user's stereo loop).
+        // PUNCH increases only the transient emphasis, TIGHT strengthens
+        // the bounded decay reduction, DENSE prioritizes sustained lows.
+        // The DENSE mass factor is capped at 1.0 of the calibrated 2x
+        // residual, avoiding the previously rejected 3x-4x residual.
+        const float characterPunch = controls_.character == Character::Punch ? 1.55f : 0.65f;
+        const float characterBody = controls_.character == Character::Dense ? 1.00f :
+                                    (controls_.character == Character::Tight ? 0.50f : 0.65f);
+        const float characterTight = controls_.character == Character::Tight ? 1.50f :
+                                     (controls_.character == Character::Punch ? 0.40f : 0.30f);
         for (std::size_t i=0; i<frames; ++i) {
             const Sample x[2] = {finiteSample(left[i]), finiteSample(right[i])};
             const float peak = static_cast<float>(std::max(std::abs(x[0]),std::abs(x[1])));

@@ -26,6 +26,14 @@ int main(int argc,char** argv){
     else if(module=="TIGHT")c.tight=amount;
     else if(module=="FINISH")c.finish=amount;
     else if(module=="GLUE")c.glue=amount;
+    else if(module=="CHAR_PUNCH" || module=="CHAR_TIGHT" || module=="CHAR_DENSE") {
+        // Reproduce the user's actual screenshot configuration while varying
+        // only CHARACTER: PUNCH/MASS/FINISH 100, TIGHT 30, GLUE 50.
+        c.punch=1.0f;c.body=1.0f;c.tight=0.30f;c.finish=1.0f;c.glue=0.50f;
+        c.character=module=="CHAR_TIGHT"?a125::drum::Character::Tight:
+                   (module=="CHAR_DENSE"?a125::drum::Character::Dense:
+                   a125::drum::Character::Punch);
+    }
     else if(module=="ALL" || module=="ALL_TIGHT" || module=="ALL_DENSE") {
         // Test the *actual* combined chain, rather than summing independent
         // module renders. 100% each is a deliberate worst-case user preset.

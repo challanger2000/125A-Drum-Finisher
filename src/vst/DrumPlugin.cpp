@@ -300,7 +300,7 @@ public:
         const int selected=std::clamp(static_cast<int>(
             getParamNormalized(kCharacter)*2.0+0.5),0,2);
         const bool bypass=getParamNormalized(kBypass)>=0.5;
-        const bool active[]={selected==0,selected==1,selected==2,!bypass,bypass};
+        const bool active[]={selected==0,selected==1,selected==2,bypass};
         for(std::size_t i=0;i<buttons_.size();++i) {
             if(!buttons_[i])continue;
             const float target=active[i]?1.f:0.f;
@@ -321,13 +321,13 @@ public:
                 editor_=editor;
                 control->setListener(this);
                 control->setValueNormalized(zoom_>=1.25?1.f:0.f);
-            }else if(tag>=9101 && tag<=9105) {
+            }else if((tag>=9101 && tag<=9103)||tag==9105) {
                 // Each on/off CTextButton is a UI-only control. Forward
                 // its mouse gesture to the real existing VST3 parameter.
                 auto* button=dynamic_cast<VSTGUI::CTextButton*>(control);
                 if(button) {
                     button->setListener(this);
-                    buttons_[static_cast<std::size_t>(tag-9101)]=button;
+                    buttons_[static_cast<std::size_t>(tag==9105?3:tag-9101)]=button;
                     refreshButtons();
                 }
             }
@@ -342,14 +342,16 @@ public:
             editor_->setZoomFactor(zoom_);
             return;
         }
-        if(tag>=9101 && tag<=9105) {
-            if(control->getValueNormalized()<0.5f) {
+        if((tag>=9101 && tag<=9103)||tag==9105) {
+            // Radio group retains the selected character; BYPASS must
+            // submit *both* ON->BYPASS and BYPASS->ON transitions.
+            if(tag<=9103 && control->getValueNormalized()<0.5f) {
                 refreshButtons();
                 return;
             }
             const ParamID id=tag<=9103?kCharacter:kBypass;
             const double value=tag<=9103?double(tag-9101)/2.0:
-                               (tag==9104?0.0:1.0);
+                               double(control->getValueNormalized()>=0.5f);
             if(std::abs(getParamNormalized(id)-value)<1.0e-9) {
                 refreshButtons();
                 return;
@@ -376,7 +378,7 @@ public:
     }
 private:
     VSTGUI::VST3Editor* editor_=nullptr;
-    std::array<VSTGUI::CTextButton*,5> buttons_{};
+    std::array<VSTGUI::CTextButton*,4> buttons_{};
     double zoom_=1.0;
 };
 } // namespace a125::drum::vst

@@ -20,7 +20,6 @@
     <control-tag name="CharacterTight" tag="9101"/>
     <control-tag name="CharacterPunch" tag="9102"/>
     <control-tag name="CharacterDense" tag="9103"/>
-    <control-tag name="ActiveButton" tag="9104"/>
     <control-tag name="BypassButton" tag="9105"/>
   </control-tags>
   <fonts>
@@ -62,8 +61,8 @@
     <view class="CTextButton" origin="415,428" size="118,34" control-tag="CharacterTight" title="TIGHT" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
     <view class="CTextButton" origin="541,428" size="118,34" control-tag="CharacterPunch" title="PUNCH" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
     <view class="CTextButton" origin="667,428" size="118,34" control-tag="CharacterDense" title="DENSE" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
-    <view class="CTextButton" origin="999,440" size="78,36" control-tag="ActiveButton" title="ON" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
-    <view class="CTextButton" origin="1085,440" size="79,36" control-tag="BypassButton" title="BYPASS" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
+    <!-- Global BYPASS sits below ZOOM; lit = bypass enabled, dark = processor ON -->
+    <view class="CTextButton" origin="1010,82" size="154,30" control-tag="BypassButton" title="BYPASS" default-value="0" min-value="0" max-value="1" kick-style="false" mouse-enabled="true" font="Label" text-color="Muted" text-color-highlighted="Text" gradient="SwitchNormal" gradient-highlighted="SwitchSelected" frame-color="SwitchFrame" frame-color-highlighted="Accent" frame-width="1" round-radius="4"/>
     <view class="CControl" custom-view-name="DrumKnobPunch" origin="70,196" size="125,125" control-tag="Punch"/>
     <view class="CControl" custom-view-name="DrumKnobBody" origin="255,196" size="125,125" control-tag="Mass"/>
     <view class="CControl" custom-view-name="DrumKnobTight" origin="440,196" size="125,125" control-tag="Tight"/>
