@@ -262,6 +262,7 @@ public:
         editor->setAllowedZoomFactors(std::vector<double>{1.0,1.5});
         editor->setZoomFactor(zoom_);
         editor_=editor;
+        buttons_.fill(nullptr);
         return editor;
     }
     VSTGUI::CView* createCustomView(VSTGUI::UTF8StringPtr name,
@@ -288,6 +289,27 @@ public:
         knob->setDefaultValue(tag==105?0.5f:0.0f);
         return knob;
     }
+    // Mouse button state tracks the two existing VST3 host parameters.
+    tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) override {
+        const auto result=EditController::setParamNormalized(tag,value);
+        if(result==kResultOk && (tag==kCharacter||tag==kBypass))
+            refreshButtons();
+        return result;
+    }
+    void refreshButtons() {
+        const int selected=std::clamp(static_cast<int>(
+            getParamNormalized(kCharacter)*2.0+0.5),0,2);
+        const bool bypass=getParamNormalized(kBypass)>=0.5;
+        const bool active[]={selected==0,selected==1,selected==2,!bypass,bypass};
+        for(std::size_t i=0;i<buttons_.size();++i) {
+            if(!buttons_[i])continue;
+            const float target=active[i]?1.f:0.f;
+            if(buttons_[i]->getValueNormalized()!=target) {
+                buttons_[i]->setValueNormalized(target);
+                buttons_[i]->invalid();
+            }
+        }
+    }
     VSTGUI::CView* verifyView(VSTGUI::CView* view,
         const VSTGUI::UIAttributes&,const VSTGUI::IUIDescription*,
         VSTGUI::VST3Editor* editor) override {
@@ -299,11 +321,15 @@ public:
                 editor_=editor;
                 control->setListener(this);
                 control->setValueNormalized(zoom_>=1.25?1.f:0.f);
-            }else if(tag==kCharacter||tag==kBypass){
-                // These are actual VST3 parameters. Do not steal their
-                // listener: VST3Editor registers its ParameterChangeListener
-                // and synchronizes clicks, automation and project recall.
-                control->setListener(editor);
+            }else if(tag>=9101 && tag<=9105) {
+                // Each on/off CTextButton is a UI-only control. Forward
+                // its mouse gesture to the real existing VST3 parameter.
+                auto* button=dynamic_cast<VSTGUI::CTextButton*>(control);
+                if(button) {
+                    button->setListener(this);
+                    buttons_[static_cast<std::size_t>(tag-9101)]=button;
+                    refreshButtons();
+                }
             }
         }
         return view;
@@ -316,10 +342,30 @@ public:
             editor_->setZoomFactor(zoom_);
             return;
         }
-        // CHARACTER and BYPASS are handled by VST3Editor, not here.
+        if(tag>=9101 && tag<=9105) {
+            if(control->getValueNormalized()<0.5f) {
+                refreshButtons();
+                return;
+            }
+            const ParamID id=tag<=9103?kCharacter:kBypass;
+            const double value=tag<=9103?double(tag-9101)/2.0:
+                               (tag==9104?0.0:1.0);
+            if(std::abs(getParamNormalized(id)-value)<1.0e-9) {
+                refreshButtons();
+                return;
+            }
+            beginEdit(id);
+            setParamNormalized(id,value);
+            performEdit(id,value);
+            endEdit(id);
+            refreshButtons();
+        }
     }
     void willClose(VSTGUI::VST3Editor* editor) override {
-        if(editor_==editor)editor_=nullptr;
+        if(editor_==editor) {
+            buttons_.fill(nullptr);
+            editor_=nullptr;
+        }
     }
     tresult PLUGIN_API setComponentState(IBStream* stream) override {
         Controls c;bool bypass=false;
@@ -330,6 +376,7 @@ public:
     }
 private:
     VSTGUI::VST3Editor* editor_=nullptr;
+    std::array<VSTGUI::CTextButton*,5> buttons_{};
     double zoom_=1.0;
 };
 } // namespace a125::drum::vst
