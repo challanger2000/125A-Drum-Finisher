@@ -1,5 +1,5 @@
 name: Drum Finisher Full Release QA
-# Windows VST3 gate: Audio-QA #40 passed. TIGHT preserves foundation via reciprocal upper shelf; original 50% stereo A/B measured, revalidate exact VST3 (2026-10-10).
+# Final audited Windows build: Audio QA #43 PASS. Verified 1s VST3 tail, shared character mapping, smoothed OUTPUT automation, CPU p95/p99 and unchanged final musical voicings (2026-10-10).
 # Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
 # Previous full release validation predates the current DSP; no inherited PASS is accepted.
 
