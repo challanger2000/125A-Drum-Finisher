@@ -34,10 +34,10 @@ public:
         kickLowA_ = pole(1.0/(twoPi*42.0));
         bodyHighA_ = pole(1.0/(twoPi*350.0));
         bodyLowA_ = pole(1.0/(twoPi*110.0));
-        glueDetectorAttackA_ = pole(0.012);
+        glueDetectorAttackA_ = pole(0.009);
         glueDetectorReleaseA_ = pole(0.180);
         glueRmsA_ = pole(0.350);
-        glueGainAttackA_ = pole(0.025);
+        glueGainAttackA_ = pole(0.012);
         glueGainReleaseA_ = pole(0.240);
         // TIGHT is triggered by a linked transient, then follows a bounded
         // exponential attenuation contour. All times are sample-rate derived.
@@ -103,8 +103,15 @@ public:
             const double detectorA=peak>glueEnv_?
                 glueDetectorAttackA_:glueDetectorReleaseA_;
             glueEnv_=detectorA*glueEnv_+(1.0-detectorA)*peak;
+            // Programme reference is true stereo mean-square energy,
+            // NOT the peak of the two channels squared. The latter made
+            // an independently panned drum hit raise the reference and
+            // weaken GLUE according to channel distribution.
+            const double stereoEnergy=0.5*(
+                static_cast<double>(x[0])*x[0]+
+                static_cast<double>(x[1])*x[1]);
             glueRmsEnergy_=glueRmsA_*glueRmsEnergy_+
-                (1.0-glueRmsA_)*static_cast<double>(peak)*peak;
+                (1.0-glueRmsA_)*stereoEnergy;
             if(++glueTick_>=16||glueDirty_){
                 glueTick_=0;
                 glueDirty_=false;
@@ -128,8 +135,10 @@ public:
             const double gainA=glueTargetGain_<autoGain_?
                 glueGainAttackA_:glueGainReleaseA_;
             autoGain_=gainA*autoGain_+(1.0-gainA)*glueTargetGain_;
-            // Restrained parallel dynamics preserves more of the dry attack.
-            const float attenuation=static_cast<float>(1.0-0.80*g*(1.0-autoGain_));
+            // A 0..100% parallel blend: 0% is exactly neutral, and
+            // 100% reaches the complete bounded compressor gain curve.
+            // The former 80% ceiling prevented full-strength operation.
+            const float attenuation=static_cast<float>(1.0-g*(1.0-autoGain_));
             // Update both channel envelopes before deriving the punch gain.
             // A stereo bus must not shift its pan because one side has a louder attack.
             double linkedTransient = 0.0;

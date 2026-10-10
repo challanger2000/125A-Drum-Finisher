@@ -196,6 +196,11 @@ for label,filename in SOURCES.items():
       "per_event":diagnostics})
     print("INJECTED_RING",freq,"events",len(diagnostics),"attack",round(attack,4),
           "tail",round(tail,4),flush=True)
+    # A maximum FINISH must suppress deliberate ring tails measurably
+    # while protecting the first 15 ms. This is a functional gate only;
+    # musically desirable natural drum resonances should remain untouched.
+    if tail > -2.5 or attack < -0.60:
+     raise ValueError("FINISH 100% onset/ring selectivity failed at %.0f Hz: %.3f dB early, %.3f dB tail"%(freq,attack,tail))
     injected.unlink();processed.unlink()
    baseline_path.unlink()
    (ROOT/"injected_resonance_multiband_report.json").write_text(json.dumps({

@@ -250,6 +250,57 @@ int main(){
             }
         }
     }
+    // OUTPUT is specified in dB, not percent gain; +12 dB at 100%
+    // and -12 dB at minimum must retain sample-level fidelity.
+    {
+        constexpr std::size_t M=4096;
+        std::vector<float> in(M),silent(M,0.0f),processed(M),other(M);
+        for(std::size_t i=0;i<M;++i)
+            in[i]=float(0.02*std::sin(2*pi*311.0*double(i)/48000.0));
+        for(float value : {-12.0f,0.0f,12.0f}) {
+            Controls output{};
+            output.outputDb=value;
+            run(48000.0,M,output,in,silent,processed,other,127);
+            const double actual=20.0*std::log10(rms(processed)/rms(in));
+            std::cout<<"OUTPUT setting="<<value<<" dB measured="<<actual<<" dB\n";
+            check(std::abs(actual-value)<0.002,
+                  "OUTPUT dB gain matches specified parameter");
+            if(value==0.0f)
+                check(processed==in && other==silent,
+                      "OUTPUT 0 dB and all modules at 0% are exactly dry");
+        }
+    }
+    // CHARACTER has three discrete settings. They must not be aliases
+    // when a drum bus drives PUNCH/MASS/TIGHT at 100%.
+    {
+        constexpr std::size_t M=24000;
+        std::vector<float> in(M),other(M),wet(M),discard(M),reference(M);
+        for(std::size_t i=0;i<M;++i) {
+            const double phase=std::fmod(double(i)/48000.0,0.25);
+            in[i]=float(0.25*std::exp(-phase*24)*
+                (std::sin(2*pi*81*double(i)/48000.0)+
+                 0.35*std::sin(2*pi*290*double(i)/48000.0)));
+            other[i]=in[i]*0.5f;
+        }
+        double distinct=0.0;
+        for(Character character : {Character::Tight,Character::Punch,Character::Dense}) {
+            Controls config{};
+            config.punch=config.body=config.tight=1.0f;
+            config.character=character;
+            run(48000.0,M,config,in,other,wet,discard,127);
+            check(std::all_of(wet.begin(),wet.end(),
+                  [](float value){return std::isfinite(value);}),
+                  "CHARACTER output remains finite");
+            if(character==Character::Tight)
+                reference=wet;
+            else {
+                for(std::size_t i=0;i<M;++i)
+                    distinct+=std::abs(double(wet[i])-reference[i]);
+            }
+        }
+        check(distinct/double(M)>0.0005,
+              "CHARACTER TIGHT/PUNCH/DENSE must change full-scale sound");
+    }
     // Host lifecycle robustness: invalid sample-rate input must not poison DSP.
     for(double invalidRate : {std::numeric_limits<double>::quiet_NaN(),
                               std::numeric_limits<double>::infinity(),

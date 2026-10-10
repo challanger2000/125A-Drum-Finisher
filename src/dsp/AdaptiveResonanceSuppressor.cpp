@@ -9,7 +9,10 @@ namespace {
 
 constexpr double kEpsilon = 1.0e-18;
 constexpr double kDetectorQ = 5.0;
-constexpr double kMaximumReduction = 0.24; // provisional; drum fixture QA required
+// Bounded per-band subtraction. Calibrated for stronger 100% removal of
+// onset-linked narrow ringing (~3 dB on injected drum rings), without
+// persistent attenuation of stationary musical fundamentals.
+constexpr double kMaximumReduction = 0.40;
 constexpr double kMinimumDominance = 0.065;
 constexpr double kPeakinessStart = 1.70;
 constexpr double kPeakinessFull = 3.80;
