@@ -1,5 +1,5 @@
 name: Drum Finisher Full Release QA
-# Integrated Windows release gate: CHARACTER/BYPASS native host-linked segment buttons (2026-10-10).
+# Integrated Windows release gate: 100% GLUE/FINISH and exact packaged CHARACTER/BYPASS UI resources (2026-10-10).
 # Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
 # Previous full release validation predates the current DSP; no inherited PASS is accepted.
 
@@ -44,6 +44,25 @@ jobs:
           if (-not $plugin) { throw "125A_Drum_Finisher.vst3 bundle not found" }
           "plugin=$($plugin.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host "Testing exact bundle: $($plugin.FullName)"
+
+      - name: Verify GUI control tags in the EXACT packaged VST3 resource
+        shell: pwsh
+        run: |
+          $plugin = Get-ChildItem -Path build -Recurse -Directory -Filter "125A_Drum_Finisher.vst3" | Select-Object -First 1
+          if (-not $plugin) { throw "Built VST3 bundle missing" }
+          $resource = Get-ChildItem -LiteralPath $plugin.FullName -Recurse -File -Filter "DrumFinisher.uidesc" | Select-Object -First 1
+          if (-not $resource) { throw "Bundled DrumFinisher.uidesc resource missing" }
+          [xml]$uidesc = Get-Content -LiteralPath $resource.FullName -Raw
+          $tags = @{ Character = 106; Bypass = 107; Zoom = 9000 }
+          foreach ($name in $tags.Keys) {
+            $binding = $uidesc.SelectSingleNode("/vstgui-ui-description/control-tags/control-tag[@name='$name']")
+            if (-not $binding -or [int]$binding.tag -ne $tags[$name]) {
+              throw "Bundled GUI parameter tag $name incorrect"
+            }
+            $button = $uidesc.SelectSingleNode("//view[@class='CSegmentButton' and @control-tag='$name']")
+            if (-not $button) { throw "Bundled GUI segment button $name missing" }
+          }
+          Write-Host "EXACT packaged VST3: CHARACTER 106, BYPASS 107 and ZOOM 9000 verified"
 
       - name: Validate exact VST3 with Steinberg normal and local-instance modes
         shell: pwsh
