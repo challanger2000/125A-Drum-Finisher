@@ -44,12 +44,12 @@
     <view class="CSegmentButton" origin="1010,34" size="155,25" control-tag="Zoom" default-value="0" style="horizontal" segment-names="100%,150%" font="Small" text-color="Text" text-color-highlighted="Text" frame-color="Accent" frame-width="1" round-radius="4"/>
     <view class="CTextLabel" origin="200,24" size="800,42" title="125A DRUM FINISHER V1" font="Title" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
     <view class="CTextLabel" origin="275,75" size="650,24" title="PRECISION DRUM BUS FINISHING" font="Small" font-color="Muted" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="75,162" size="120,22" title="PUNCH (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="260,162" size="120,22" title="MASS (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="445,162" size="120,22" title="TIGHT (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="630,162" size="120,22" title="FINISH (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="815,162" size="120,22" title="GLUE (%)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
-    <view class="CTextLabel" origin="1000,162" size="120,22" title="OUTPUT (dB)" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="75,162" size="120,22" title="PUNCH" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="260,162" size="120,22" title="MASS" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="445,162" size="120,22" title="TIGHT" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="630,162" size="120,22" title="FINISH" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="815,162" size="120,22" title="GLUE" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="1000,162" size="120,22" title="OUTPUT" font="Label" font-color="Text" transparent="true" text-alignment="center" mouse-enabled="false"/>
     <view class="CParamDisplay" origin="70,336" size="125,24" control-tag="Punch" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CParamDisplay" origin="255,336" size="125,24" control-tag="Mass" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>
     <view class="CParamDisplay" origin="440,336" size="125,24" control-tag="Tight" transparent="true" font="Label" font-color="Text" text-alignment="center" mouse-enabled="false" frame-width="0"/>

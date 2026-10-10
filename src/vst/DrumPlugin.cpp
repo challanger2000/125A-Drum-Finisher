@@ -7,6 +7,7 @@
 #include "public.sdk/source/vst/vstparameters.h"
 #include "vstgui/uidescription/uiattributes.h"
 #include <cstring>
+#include <cstdio>
 #include <vector>
 #include "BypassRamp.h"
 #include "public.sdk/source/vst/vstaudioeffect.h"
@@ -255,6 +256,34 @@ public:
         bypassParameter->appendString(STR16("BYPASS"));
         parameters.addParameter(bypassParameter);
         return kResultOk;
+    }
+    // VSTGUI's CParamDisplay uses VST3Editor::ParameterChangeListener,
+    // which calls getParamStringByValue for the text BELOW the knobs.
+    // RangeParameter's default plain-value formatter omits the unit on
+    // these numeric displays; adding units to the headers was incorrect.
+    tresult PLUGIN_API getParamStringByValue(
+        ParamID id, ParamValue valueNormalized, String128 resultText) override {
+        if (!resultText) return kInvalidArgument;
+        char text[32]{};
+        if (id>=kPunch && id<=kGlue) {
+            std::snprintf(text,sizeof(text),"%.0f %%",
+                clampUnit(valueNormalized)*100.0);
+        } else if (id==kOutput) {
+            const double db=24.0*clampUnit(valueNormalized)-12.0;
+            if (std::abs(db)<0.05)
+                std::snprintf(text,sizeof(text),"0.0 dB");
+            else
+                std::snprintf(text,sizeof(text),"%+.1f dB",db);
+        } else {
+            return EditController::getParamStringByValue(id,valueNormalized,resultText);
+        }
+        // VST3 String128 is UTF-16 (TChar); use ASCII-only unit labels
+        // so this stays compatible with the pinned Steinberg SDK.
+        std::size_t i=0;
+        for (;text[i]!=0 && i<127;++i)
+            resultText[i]=static_cast<TChar>(static_cast<unsigned char>(text[i]));
+        resultText[i]=0;
+        return kResultTrue;
     }
     IPlugView* PLUGIN_API createView(FIDString name) override {
         if(!name || std::strcmp(name,ViewType::kEditor)!=0)return nullptr;

@@ -36,9 +36,22 @@ for v in buttons:
 
 segments=doc.findall(".//view[@class='CSegmentButton']")
 assert len(segments)==1 and segments[0].get("control-tag")=="Zoom"
-for name in ("PUNCH","MASS","TIGHT","FINISH","GLUE"):
-    assert any(v.get("title")==name+" (%)" for v in doc.findall(".//view"))
-assert any(v.get("title")=="OUTPUT (dB)" for v in doc.findall(".//view"))
+# Headers are deliberately name-only. Units belong to *dynamic values*
+# underneath the knobs, and must update with automation / host recall.
+for name in ("PUNCH","MASS","TIGHT","FINISH","GLUE","OUTPUT"):
+    assert any(v.get("title")==name for v in doc.findall(".//view"))
+assert not any(v.get("title") in (
+    "PUNCH (%)","MASS (%)","TIGHT (%)","FINISH (%)","GLUE (%)",
+    "OUTPUT (dB)") for v in doc.findall(".//view"))
+for name in ("Punch","Mass","Tight","Finish","Glue","Output"):
+    displays=[v for v in doc.findall(".//view[@class='CParamDisplay']")
+              if v.get("control-tag")==name]
+    assert len(displays)==1, "value display missing or duplicated: "+name
+assert "getParamStringByValue(" in code
+assert "id>=kPunch && id<=kGlue" in code
+assert '"%.0f %%"' in code
+assert '"0.0 dB"' in code and '"%+.1f dB"' in code
+assert "24.0*clampUnit(valueNormalized)-12.0" in code
 assert "std::array<VSTGUI::CTextButton*,4> buttons_" in code
 assert "dynamic_cast<VSTGUI::CTextButton*>(control)" in code
 assert "button->setListener(this)" in code
@@ -55,4 +68,4 @@ for token in ("beginEdit(id);","setParamNormalized(id,value);",
 assert "tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) override" in code
 assert "kCharacter=106, kBypass=107" in code
 assert "static constexpr int32 stateVersion=1" in code
-print("PASS: three character CTextButtons plus one header BYPASS toggle, 106/107 host gestures, %/dB labels, UI lifecycle mapping")
+print("PASS: three character CTextButtons plus one header BYPASS toggle, 106/107 host gestures, plain headers and %/dB dynamic value text, UI lifecycle mapping")
