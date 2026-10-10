@@ -39,6 +39,9 @@ public:
         glueRmsA_ = pole(0.350);
         glueGainAttackA_ = pole(0.012);
         glueGainReleaseA_ = pole(0.240);
+        // OUTPUT trim automation must not jump directly at arbitrary samples.
+        // A 5ms one-pole gain ramp is bounded, sample-rate independent.
+        outputGainA_ = pole(0.005);
         // TIGHT is triggered by a linked transient, then follows a bounded
         // exponential attenuation contour. All times are sample-rate derived.
         characterToneA_ = pole(1.0/(twoPi*900.0));
@@ -68,6 +71,8 @@ public:
         glueRmsEnergy_=0.0;
         glueTick_=0;
         glueDirty_=true;
+        outputGainSmoothed_=makeup_;
+        processingStarted_=false;
         resonance_.reset();
     }
     void setControls(const Controls& c) noexcept {
@@ -80,6 +85,9 @@ public:
         controls_.glue = unit(c.glue);
         controls_.outputDb = std::isfinite(c.outputDb) ? std::clamp(c.outputDb, -12.0f, 12.0f) : 0.0f;
         makeup_ = std::pow(10.0f, controls_.outputDb / 20.0f);
+        // The first process() call must honour the restored gain immediately;
+        // only *subsequent changes* are interpolated to avoid zipper noise.
+        if(!processingStarted_) outputGainSmoothed_=makeup_;
     }
     const Controls& controls() const noexcept { return controls_; }
 
@@ -93,11 +101,11 @@ public:
         const float t = controls_.tight;
         const float f = controls_.finish;
         const float g = controls_.glue;
-        const float makeup = makeup_;
-        // A neutral output must still advance detector state: otherwise
-        // automating a module from 0% starts with stale envelopes.
-        const bool neutral = p == 0 && b == 0 && t == 0 && f == 0 &&
-                             g == 0 && controls_.outputDb == 0;
+        const bool modulesOff = p==0 && b==0 && t==0 && f==0 && g==0;
+        processingStarted_=processingStarted_ || frames>0;
+        // Keep detector state advanced even when all modules are neutral.
+        // The neutral decision occurs per *sample*, not per block, so
+        // sample-accurate OUTPUT automation cannot become block dependent.
         // Explicitly separate established processing modes. The old
         // 0.75/1.0/1.15 variations measured nearly identical after level
         // matching (<0.5 dB spectral differences on the user's stereo loop).
@@ -128,6 +136,13 @@ public:
         const double lowTarget=std::pow(10.0,targetLowDb/20.0);
         const double highTarget=std::pow(10.0,targetHighDb/20.0);
         for (std::size_t i=0; i<frames; ++i) {
+            outputGainSmoothed_=outputGainA_*outputGainSmoothed_+
+                (1.0-outputGainA_)*static_cast<double>(makeup_);
+            if(std::abs(outputGainSmoothed_-1.0)<1.0e-7 && makeup_==1.0f)
+                outputGainSmoothed_=1.0;
+            const float makeup=static_cast<float>(outputGainSmoothed_);
+            const bool neutral=modulesOff && controls_.outputDb==0.0f &&
+                               outputGainSmoothed_==1.0;
             characterLowGain_=characterSmoothA_*characterLowGain_+
                 (1.0-characterSmoothA_)*lowTarget;
             characterHighGain_=characterSmoothA_*characterHighGain_+
@@ -353,6 +368,8 @@ private:
     Channel channels_[2]{};
     Controls controls_{};
     float makeup_=1.0f;
+    double outputGainA_=0.99,outputGainSmoothed_=1.0;
+    bool processingStarted_=false;
     double finishPairLeft_=0.0,finishPairRight_=0.0;
     dsp::AdaptiveResonanceSuppressor resonance_{};
 };

@@ -278,6 +278,35 @@ int main(){
                       "OUTPUT 0 dB and all modules at 0% are exactly dry");
         }
     }
+    // OUTPUT automation: a discontinuous +12 dB target must not make
+    // an instantaneous 4x step in amplitude, and returning to 0 dB
+    // must recover exact neutrality with arbitrary block boundaries.
+    {
+        constexpr std::size_t M=16000;
+        std::vector<float> input(M,0.20f),zero(M,0.0f),l(M),rr(M);
+        Core automated;automated.prepare(48000.0);
+        Controls out{};
+        automated.setControls(out);
+        automated.process(input.data(),zero.data(),l.data(),rr.data(),3000);
+        const double prev=l[2999];
+        out.outputDb=12.0f;automated.setControls(out);
+        automated.process(input.data()+3000,zero.data()+3000,
+                          l.data()+3000,rr.data()+3000,5000);
+        const double first=l[3000],late=l[7999];
+        std::cout<<"OUTPUT automation prev="<<prev<<" first="<<first
+                 <<" after5000="<<late<<"\n";
+        check(std::abs(first-prev)<0.002,
+              "OUTPUT +12 dB automated first sample is smoothly interpolated");
+        check(std::abs(20.0*std::log10(late/0.20)-12.0)<0.002,
+              "OUTPUT +12 dB reaches exact steady gain");
+        out.outputDb=0.0f;automated.setControls(out);
+        automated.process(input.data()+8000,zero.data()+8000,
+                          l.data()+8000,rr.data()+8000,M-8000);
+        check(std::abs(double(l[8000])-l[7999])<0.002,
+              "OUTPUT return to 0 dB is smoothly interpolated");
+        check(l[M-1]==input[M-1] && rr[M-1]==0.0f,
+              "OUTPUT return to 0 dB becomes bit-exact neutral");
+    }
     // CHARACTER has three discrete settings. They must not be aliases
     // when a drum bus drives PUNCH/MASS/TIGHT at 100%.
     {
