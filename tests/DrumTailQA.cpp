@@ -14,7 +14,7 @@ int main() {
     constexpr double pi=3.14159265358979323846;
     for(double fs:{44100.0,48000.0,96000.0}) {
         const size_t total=static_cast<size_t>(fs*2.0);
-        const size_t cutoff=static_cast<size_t>(fs*0.86);
+        const size_t cutoff=static_cast<size_t>(fs*0.80);
         std::vector<float> l(total,0.0f),r(total,0.0f),outL(total),outR(total);
         for(int k=0;k<3;++k) {
             const size_t offset=static_cast<size_t>((0.2+0.23*k)*fs);
