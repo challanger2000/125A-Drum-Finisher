@@ -1,5 +1,5 @@
 name: Drum Finisher Full Release QA
-# Integrated Windows release gate: 100% GLUE/FINISH and exact packaged CHARACTER/BYPASS UI resources (2026-10-10).
+# Integrated Windows release gate: MASS maximum wet residual 2x; Audio-QA #34 SUCCESS; current exact packaged UI and all DSP contracts (2026-10-10).
 # Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
 # Previous full release validation predates the current DSP; no inherited PASS is accepted.
 
