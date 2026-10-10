@@ -211,7 +211,16 @@ public:
                 // The sustain detector is gain-relative, not tied to 0.02 FS.
                 // MASS: low-mid density plus controlled parallel harmonic shaping.
                 // Keep old BODY parameter ID and state compatibility.
-                const double massAmount=b*characterBody;
+                // Additive residual amplification: the established MASS
+                // filter and nonlinear shape remain unchanged. On the full
+                // knob range b=[0,1], gain of the wet residual is b*(1+b).
+                // Thus 0% is exact dry, 50% gives 0.75x of the old 100%
+                // residual, and 100% gives 2.0x. This is not a post gain
+                // boost and does not modify other modules or parameter IDs.
+                // A 2x cap was selected after level-matched 1x/1.5x/2x/
+                // 3x/4x comparisons on 5 drum sources; beyond 2x bass
+                // benefit diminished while spectral balance/width worsened.
+                const double massAmount=b*(1.0+b)*characterBody;
                 // Bass Finisher-derived principle: only the nonlinear odd-harmonic
                 // residual is added. Normalize the waveshaper by drive so its
                 // small-signal slope is unity; the old tanh(2.5) normalization

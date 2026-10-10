@@ -133,7 +133,7 @@ int main(){
             return std::sqrt(energy/double(end-start));
         };
         double previousTail=0.0;
-        for(float amount : {0.0f,0.25f,0.5f,1.0f}) {
+        for(float amount : {0.0f,0.25f,0.5f,0.75f,1.0f}) {
             Controls tight{};tight.tight=amount;
             run(sr,M,tight,input,right,processedL,processedR,127);
             // Use the second strike to exclude detector initialization.
@@ -244,8 +244,12 @@ int main(){
                                      "MASS 0% must remain exact dry");
                 else check(boost>previousDb+0.10,
                            "MASS control must progressively add body");
-                if(amount==1.0f)check(boost>=2.5 && boost<=3.8,
-                                      "MASS measured 100% tonal gain");
+                // 2x full-scale residual amplification has an expected
+                // 75/196-Hz gain of about 5 dB on the fixed 0.02 FS sine.
+                // This guard catches accidental fallback to the 1x transfer
+                // or unbounded amplification (empirically calibrated).
+                if(amount==1.0f)check(boost>=4.5 && boost<=5.8,
+                                      "MASS 2x residual: calibrated maximum tonal gain");
                 previousDb=boost;
             }
         }
