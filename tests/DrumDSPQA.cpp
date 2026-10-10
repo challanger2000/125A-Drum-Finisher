@@ -135,6 +135,8 @@ int main(){
         double previousTail=0.0;
         for(float amount : {0.0f,0.25f,0.5f,0.75f,1.0f}) {
             Controls tight{};tight.tight=amount;
+            // Advertised maximum decay effect is the TIGHT profile.
+            tight.character=Character::Tight;
             run(sr,M,tight,input,right,processedL,processedR,127);
             // Use the second strike to exclude detector initialization.
             const std::size_t start=12000;
@@ -231,6 +233,8 @@ int main(){
             double previousDb=-1.0;
             for(float amount : {0.0f,0.25f,0.5f,1.0f}) {
                 Controls mass{};mass.body=amount;
+                // DENSE is the calibrated 2x MASS full residual.
+                mass.character=Character::Dense;
                 run(48000.0,M,mass,in,right,wet,wetR,256);
                 double dryPower=0.0,wetPower=0.0;
                 for(std::size_t i=M/2;i<M;++i) {

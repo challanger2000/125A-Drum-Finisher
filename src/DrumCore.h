@@ -41,6 +41,8 @@ public:
         glueGainReleaseA_ = pole(0.240);
         // TIGHT is triggered by a linked transient, then follows a bounded
         // exponential attenuation contour. All times are sample-rate derived.
+        characterToneA_ = pole(1.0/(twoPi*900.0));
+        characterSmoothA_ = pole(0.020);
         tightDecayA_ = pole(0.060);
         tightGainRecoverA_ = pole(0.0005);
         tightGainReduceA_ = pole(0.008);
@@ -53,6 +55,7 @@ public:
     void reset() noexcept {
         for (auto& c : channels_) c = Channel{};
         glueEnv_ = 0.0;
+        characterLowGain_=characterHighGain_=1.0;
         tightContour_ = 0.0;
         tightGainSmoothed_ = 1.0;
         tightSinceOnset_ = 0;
@@ -99,12 +102,30 @@ public:
         // the bounded decay reduction, DENSE prioritizes sustained lows.
         // The DENSE mass factor is capped at 1.0 of the calibrated 2x
         // residual, avoiding the previously rejected 3x-4x residual.
-        const float characterPunch = controls_.character == Character::Punch ? 1.55f : 0.65f;
+        const float characterPunch = controls_.character == Character::Punch ? 1.25f : 0.65f;
         const float characterBody = controls_.character == Character::Dense ? 1.00f :
                                     (controls_.character == Character::Tight ? 0.50f : 0.65f);
         const float characterTight = controls_.character == Character::Tight ? 1.50f :
                                      (controls_.character == Character::Punch ? 0.40f : 0.30f);
+        // Existing macros alone were too similar after matched loudness.
+        // One-pole minimum-phase low/high shelves add bounded, distinct
+        // voicing: TIGHT lean (-1.6 dB low), PUNCH neutral tonality, DENSE
+        // warmer (+1.4 dB low, -1.0 dB high). Amount is musical and
+        // approaches zero with the effect controls. TIGHT-only and FINISH-
+        // only must retain their established transient/selectivity profile.
+        const double characterColorAmount=std::max(p,g);
+        const double targetLowDb=characterColorAmount*
+            (controls_.character==Character::Tight?-1.6:
+             (controls_.character==Character::Dense?1.4:0.0));
+        const double targetHighDb=characterColorAmount*
+            (controls_.character==Character::Dense?-1.0:0.0);
+        const double lowTarget=std::pow(10.0,targetLowDb/20.0);
+        const double highTarget=std::pow(10.0,targetHighDb/20.0);
         for (std::size_t i=0; i<frames; ++i) {
+            characterLowGain_=characterSmoothA_*characterLowGain_+
+                (1.0-characterSmoothA_)*lowTarget;
+            characterHighGain_=characterSmoothA_*characterHighGain_+
+                (1.0-characterSmoothA_)*highTarget;
             const Sample x[2] = {finiteSample(left[i]), finiteSample(right[i])};
             const float peak = static_cast<float>(std::max(std::abs(x[0]),std::abs(x[1])));
             // Signal-relative stereo-linked bus compression. Threshold follows
@@ -256,6 +277,21 @@ public:
             // Only the delta is added; unity at FINISH=0 remains bit-exact.
             outLeft[i]=neutral ? x[0] : finiteSample(static_cast<Sample>(outLeft[i]+(fl-finishPairLeft_)*attenuation*makeup));
             outRight[i]=neutral ? x[1] : finiteSample(static_cast<Sample>(outRight[i]+(fr-finishPairRight_)*attenuation*makeup));
+            // Stereo pair uses identical first-order response coefficients
+            // and smoothed gain. Keep the filter warm even at 0% or while
+            // bypassed; in/out signal is unchanged when macro is disabled.
+            for(int ch=0;ch<2;++ch){
+                Channel& channel=channels_[ch];
+                const double raw=ch==0?outLeft[i]:outRight[i];
+                channel.toneLow=characterToneA_*channel.toneLow+
+                    (1.0-characterToneA_)*raw;
+                if(characterColorAmount>0.0 && !neutral){
+                    const double colored=characterLowGain_*channel.toneLow+
+                        characterHighGain_*(raw-channel.toneLow);
+                    if(ch==0)outLeft[i]=finiteSample(static_cast<Sample>(colored));
+                    else outRight[i]=finiteSample(static_cast<Sample>(colored));
+                }
+            }
         }
     }
     void process(const float* l,const float* r,float* ol,float* or_,std::size_t n) noexcept {
@@ -273,6 +309,7 @@ private:
         double kickLow=0.0;
         double bodyHigh=0.0;
         double bodyLow=0.0;
+        double toneLow=0.0;
     };
     static float unit(float x) noexcept { return std::isfinite(x) ? std::clamp(x,0.0f,1.0f) : 0.0f; }
     template<class Sample>
@@ -282,6 +319,8 @@ private:
     }
     double fs_=48000.0;
     double fastA_=0.99, slowA_=0.999;
+    double characterToneA_=0.99,characterSmoothA_=0.99;
+    double characterLowGain_=1.0,characterHighGain_=1.0;
     double kickHighA_=0.98, kickLowA_=0.99;
     double bodyHighA_=0.98, bodyLowA_=0.99;
     double glueDetectorAttackA_=0.99,glueDetectorReleaseA_=0.99;
