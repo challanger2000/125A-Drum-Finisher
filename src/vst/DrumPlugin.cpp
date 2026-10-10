@@ -112,6 +112,17 @@ public:
         AudioEffect::setProcessing(state);
         return kResultTrue;
     }
+    // MASS/FI​NISH retain exponentially decaying filter state after input
+    // silence. Offline renderers rely on getTailSamples() to avoid trimming
+    // this real, measured decay. Verified on 44.1kHz stereo impulses:
+    // ~-50 dBFS first 50ms, ~-110 dBFS 50-250ms, below -150dBFS
+    // in the 250ms-1s section. One second is a conservative upper bound.
+    // Steinberg IAudioProcessor: return an output tail, NOT latency.
+    uint32 PLUGIN_API getTailSamples() override {
+        const double sr=processSetup.sampleRate;
+        return static_cast<uint32>(std::isfinite(sr) && sr>=8000.0 &&
+                                   sr<=384000.0 ? sr : 48000.0);
+    }
     tresult PLUGIN_API canProcessSampleSize(int32 symbolic) override {
         return (symbolic==kSample32||symbolic==kSample64)?kResultTrue:kResultFalse;
     }

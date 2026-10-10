@@ -41,6 +41,13 @@ add_test(NAME drum_finish_targeted_qa COMMAND drum_finish_targeted_qa)
 add_executable(drum_value_text_qa tests/DrumValueTextQA.cpp)
 target_include_directories(drum_value_text_qa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME drum_value_text_qa COMMAND drum_value_text_qa)
+# Auditable post-input filter tail and 512-sample p95/p99 CPU path.
+add_executable(drum_tail_qa tests/DrumTailQA.cpp src/dsp/AdaptiveResonanceSuppressor.cpp)
+target_include_directories(drum_tail_qa PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME drum_tail_qa COMMAND drum_tail_qa)
+add_executable(drum_realtime_bench tests/DrumRealtimeBench.cpp src/dsp/AdaptiveResonanceSuppressor.cpp)
+target_include_directories(drum_realtime_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME drum_realtime_bench COMMAND drum_realtime_bench)
 
 option(DRUM_BUILD_VST3 "Build VST3 using an existing recursively cloned Steinberg SDK" OFF)
 if(DRUM_BUILD_VST3)
