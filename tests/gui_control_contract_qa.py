@@ -69,6 +69,9 @@ for token in ("beginEdit(id);","setParamNormalized(id,value);",
     assert token in code,token
 assert "tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) override" in code
 assert "kCharacter=106, kBypass=107" in code
+assert "a125::drum::characterIndex(value)" in code, "processor must use shared VST3 step decoder"
+assert "a125::drum::characterIndex(getParamNormalized(kCharacter))" in code, "GUI and processor must match"
+assert "drum_parameter_map_qa" in (root/"CMakeLists.txt").read_text()
 assert "static constexpr int32 stateVersion=1" in code
 assert "uint32 PLUGIN_API getTailSamples() override" in code
 assert "processSetup.sampleRate" in code

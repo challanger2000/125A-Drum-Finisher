@@ -3,6 +3,7 @@
 #include "gui/BrandLogoView.h"
 #include "gui/FaceplateView.h"
 #include "gui/ValueText.h"
+#include "ParamMapping.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/lib/controls/ccontrol.h"
 #include "vstgui/lib/controls/cbuttons.h"
@@ -43,7 +44,7 @@ static void apply(Controls& c, ParamID id, double value, bool& bypass) {
         case kFinish:c.finish=static_cast<float>(value);break;
         case kGlue:c.glue=static_cast<float>(value);break;
         case kOutput:c.outputDb=static_cast<float>(24.0*value-12.0);break;
-        case kCharacter:c.character=static_cast<Character>(std::clamp(static_cast<int>(value*3.0),0,2));break;
+        case kCharacter:c.character=static_cast<Character>(a125::drum::characterIndex(value));break;
         case kBypass:bypass=value>=0.5;break;
         default:break;
     }
@@ -336,8 +337,7 @@ public:
         return result;
     }
     void refreshButtons() {
-        const int selected=std::clamp(static_cast<int>(
-            getParamNormalized(kCharacter)*2.0+0.5),0,2);
+        const int selected=a125::drum::characterIndex(getParamNormalized(kCharacter));
         const bool bypass=getParamNormalized(kBypass)>=0.5;
         const bool active[]={selected==0,selected==1,selected==2,bypass};
         for(std::size_t i=0;i<buttons_.size();++i) {
