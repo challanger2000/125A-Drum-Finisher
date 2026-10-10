@@ -1,3 +1,5 @@
+> **Archived prototype iteration, not current DSP parameters.** The values and known-open items below were superseded by later measured PUNCH/MASS/TIGHT/FINISH/GLUE revisions. The current verified DSP implementation is `src/DrumCore.h`, with current test evidence in the dated files under `QA/` and Audio QA #43.
+
 # Module-level calibration notes — V1
 
 Build #6 demonstrated at 50%:

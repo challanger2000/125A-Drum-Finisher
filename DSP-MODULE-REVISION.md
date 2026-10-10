@@ -1,3 +1,5 @@
+> **Archived experimental DSP iteration.** The attack/release numbers and 'known outstanding' lines below describe an older prototype and must **not** override the current `src/DrumCore.h` or `QA-EVIDENCE.md`. Current calibrated MASS, GLUE and TIGHT results live under `QA/` and Audio QA #43.
+
 # Drum DSP module separation — experimental revision
 
 Based on the user's 44.1kHz Stereo Drum loop and isolated module measurement:

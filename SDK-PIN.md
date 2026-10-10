@@ -17,6 +17,6 @@ git submodule update --init --recursive
 
 CMake variable `VST3_SDK_ROOT` points to that checkout. SDK integration is optional in the preliminary local CMake configuration.
 
-**Verification status:** exact SDK tag and immutable commit confirmed; plug-in compilation, host compatibility and Validator have NOT yet run. Do not use this preliminary branch for distribution.
+**Verification status (updated 2026-10-10):** the SDK version and immutable revision above are pinned by CI; Windows VST3 compilation and official Steinberg Validator normal/local checks have passed, most recently QA #13 (2026-10-10). Full Windows QA #14 is being executed for the newer final-audit corrections. This SDK pin alone is not a release certificate.
 
-**Known VST3 integration gaps:** GUI, 64-bit buffers, sample-offset-accurate automation, safe state-transfer boundary, bypass tail/silence semantics, host stress tests. These must be resolved before release QA.
+**Integration coverage:** GUI, 64-bit buffers, sample-offset automation, state transfer, bypass crossfade and host stress tests are now implemented and exercised in CTest / QA. The final audit corrected missing VST3 tail metadata, discrete mode rounding and OUTPUT automation smoothing. Actual Studio One click, automation, zoom and project-reopen behavior remain separate practical acceptance gates; see `HOST-QA.md`.

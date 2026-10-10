@@ -1,3 +1,5 @@
+> **Historical first-test feedback, superseded.** The old two-segment CHARACTER/BYPASS experiments below are no longer the implementation. The current Studio One screenshot and Full Release QA #13 show three real CTextButtons for CHARACTER and **one** BYPASS toggle; numeric % and dB appear beneath the knobs. This page records the earlier failure only. See `QA/STUDIO-ONE-CHARACTER-AB-2026-10-10.md` and `HOST-QA.md` for current findings.
+
 # GUI field feedback: Studio One, first test build
 
 Observed by user:

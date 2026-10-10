@@ -1,3 +1,5 @@
+> **Historical static design specification, not the current live layout.** The current authoritative 1200×540 UI geometry, actual button positions and compiled metal faceplate are in `resource/DrumFinisher.uidesc` and `src/gui/FaceplateView.cpp`. The current UI has one header BYPASS toggle, three centered CHARACTER buttons and six readouts with units below plain module titles. The early coordinate proposals below are intentionally retained as design history, **not** as an implementation or release checklist.
+
 # 125A Drum Finisher V1 — Static GUI design gate
 
 Status: **design approved for implementation only after visual review**; no claim that the VSTGUI editor is installed.
