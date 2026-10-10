@@ -1,5 +1,5 @@
 name: Drum Finisher Full Release QA
-# Windows VST3 gate for one BYPASS header toggle, three distinct CHARACTER buttons and smoothed live voicing (2026-10-10).
+# Windows VST3 gate: four buttons, passive mechanical faceplate, 6 live unit value readouts and character quality (2026-10-10).
 # Require ctest + two Steinberg validation modes + 125A Plugin Tester on the same built VST3.
 # Previous full release validation predates the current DSP; no inherited PASS is accepted.
 
@@ -81,6 +81,21 @@ jobs:
           if ($uidesc.SelectNodes("//view[@class='CSegmentButton']").Count -ne 1) {
             throw "Unclickable CHARACTER or BYPASS segment still bundled"
           }
+          $decoration = $uidesc.SelectSingleNode("/vstgui-ui-description/template/view[1]")
+          if (-not $decoration -or $decoration.GetAttribute('custom-view-name') -ne 'DrumFaceplate' -or
+              $decoration.GetAttribute('mouse-enabled') -ne 'false' -or
+              $decoration.GetAttribute('size') -ne '1200,540') {
+            throw "Decorative faceplate must be the first, noninteractive full-canvas child"
+          }
+          foreach ($label in @('PUNCH','MASS','TIGHT','FINISH','GLUE','OUTPUT')) {
+            $plain = $uidesc.SelectSingleNode("//view[@class='CTextLabel' and @title='$label']")
+            if (-not $plain) { throw "Module header $label must be plain (no units)" }
+          }
+          foreach ($tag in @('Punch','Mass','Tight','Finish','Glue','Output')) {
+            $display = $uidesc.SelectSingleNode("//view[@class='CParamDisplay' and @control-tag='$tag']")
+            if (-not $display) { throw "Dynamic value readout $tag must be present" }
+          }
+          Write-Host "Packaged faceplate is passive; headers plain; all six dynamic value readouts present"
           Write-Host "EXACT packaged VST3: three CHARACTER buttons, one header BYPASS toggle; IDs 106/107 stable"
 
       - name: Validate exact VST3 with Steinberg normal and local-instance modes
